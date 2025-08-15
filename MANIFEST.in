@@ -1,0 +1,43 @@
+# Include license and documentation
+include LICENSE
+include README.md
+include CONTRIBUTING.md
+include USAGE_GUIDE.md
+include QUICK_REFERENCE.md
+
+# Include configuration files
+include requirements.txt
+include pyproject.toml
+include package.json
+include .env.example
+
+# Include documentation
+recursive-include docs *.md
+recursive-include .kiro *.md
+
+# Include static files
+recursive-include app/static *
+recursive-include app/templates *
+
+# Include test files
+recursive-include tests *.py
+
+# Include scripts
+recursive-include scripts *.py
+
+# Include examples
+recursive-include examples *.py
+
+# Exclude development and build files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude .venv
+global-exclude venv
+global-exclude .pytest_cache
+global-exclude .coverage
+global-exclude htmlcov

@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fairy-ai-assistant"
+version = "1.0.0"
+description = "A sophisticated AI assistant that can analyze, improve, and evolve its own codebase while providing intelligent conversational assistance"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Hani Hazem", email = "hany.hazem.cs@gmail.com"}
+]
+maintainers = [
+    {name = "Hani Hazem", email = "hany.hazem.cs@gmail.com"}
+]
+keywords = [
+    "ai",
+    "assistant", 
+    "self-improving",
+    "automation",
+    "python",
+    "fastapi",
+    "machine-learning"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "redis>=5.0.0",
+    "sentence-transformers>=2.2.0",
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "faiss-cpu>=1.7.0",
+    "requests>=2.31.0",
+    "python-multipart>=0.0.6",
+    "jinja2>=3.1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/Hany-hazem/Fairy"
+Repository = "https://github.com/Hany-hazem/Fairy.git"
+Issues = "https://github.com/Hany-hazem/Fairy/issues"
+Documentation = "https://github.com/Hany-hazem/Fairy#readme"
+
+[project.scripts]
+fairy-assistant = "start_assistant:main"
+complete-task = "scripts.complete_task:main"
+
+[tool.setuptools]
+packages = ["app", "agents", "tests", "scripts"]
+
+[tool.setuptools.package-data]
+app = ["static/*", "templates/*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
