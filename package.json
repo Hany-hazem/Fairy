@@ -1,0 +1,37 @@
+{
+  "name": "fairy-ai-assistant",
+  "version": "1.0.0",
+  "description": "A sophisticated AI assistant that can analyze, improve, and evolve its own codebase while providing intelligent conversational assistance",
+  "main": "app/main.py",
+  "scripts": {
+    "start": "python3 start_assistant.py",
+    "test": "python3 run_integration_tests.py",
+    "complete-task": "python3 scripts/complete_task.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hany-hazem/Fairy.git"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "self-improving",
+    "automation",
+    "python",
+    "fastapi",
+    "machine-learning"
+  ],
+  "author": {
+    "name": "Hani Hazem",
+    "email": "hany.hazem.cs@gmail.com",
+    "url": "https://github.com/Hany-hazem"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Hany-hazem/Fairy/issues"
+  },
+  "homepage": "https://github.com/Hany-hazem/Fairy#readme",
+  "engines": {
+    "python": ">=3.8"
+  }
+}

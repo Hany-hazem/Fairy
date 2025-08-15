@@ -5,6 +5,11 @@ CLI script for completing tasks with automated Git workflow.
 Usage:
     python scripts/complete_task.py --task-id "1.1" --task-name "Implement feature" --description "Added new functionality"
     python scripts/complete_task.py --auto-detect-from-spec .kiro/specs/personal-assistant-enhancement/tasks.md
+
+Copyright (c) 2024 Hani Hazem
+Licensed under the MIT License. See LICENSE file in the project root for full license information.
+Repository: https://github.com/Hany-hazem/Fairy
+Contact: hany.hazem.cs@gmail.com
 """
 
 import argparse

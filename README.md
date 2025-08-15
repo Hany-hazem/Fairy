@@ -43,8 +43,8 @@
 
 ### Option 1: Easy Setup (Recommended)
 ```bash
-git clone https://github.com/yourusername/self-improving-ai-assistant.git
-cd self-improving-ai-assistant
+git clone https://github.com/Hany-hazem/Fairy.git
+cd Fairy
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -262,8 +262,8 @@ We welcome contributions! Please see our contributing guidelines:
 ### Development Setup
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/self-improving-ai-assistant.git
-cd self-improving-ai-assistant
+git clone https://github.com/Hany-hazem/Fairy.git
+cd Fairy
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -308,7 +308,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **⭐ Star this repository if you find it helpful!**
 
-[Report Bug](https://github.com/yourusername/self-improving-ai-assistant/issues) • [Request Feature](https://github.com/yourusername/self-improving-ai-assistant/issues) • [Documentation](USAGE_GUIDE.md)
+[Report Bug](https://github.com/Hany-hazem/Fairy/issues) • [Request Feature](https://github.com/Hany-hazem/Fairy/issues) • [Documentation](USAGE_GUIDE.md)
+
+---
+
+## 👨‍💻 Author
+
+**Hani Hazem**
+- 📧 Email: [hany.hazem.cs@gmail.com](mailto:hany.hazem.cs@gmail.com)
+- 🐙 GitHub: [@Hany-hazem](https://github.com/Hany-hazem)
+- 🌐 Repository: [Fairy](https://github.com/Hany-hazem/Fairy)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright © 2024 Hani Hazem. All rights reserved.
 
 </div>
 

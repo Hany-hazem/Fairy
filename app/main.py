@@ -1,4 +1,15 @@
-# app/main.py
+#!/usr/bin/env python3
+"""
+Fairy AI Assistant - Main FastAPI Application
+
+A sophisticated AI assistant that can analyze, improve, and evolve its own codebase 
+while providing intelligent conversational assistance.
+
+Copyright (c) 2024 Hani Hazem
+Licensed under the MIT License. See LICENSE file in the project root for full license information.
+Repository: https://github.com/Hany-hazem/Fairy
+Contact: hany.hazem.cs@gmail.com
+"""
 import json
 import time
 from typing import Dict, Optional, List, Any

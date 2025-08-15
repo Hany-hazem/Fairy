@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
-Self-Improving AI Assistant - Easy Startup Script
+Fairy AI Assistant - Easy Startup Script
 
 This script provides an easy way to start and interact with the AI assistant.
+
+Copyright (c) 2024 Hani Hazem
+Licensed under the MIT License. See LICENSE file in the project root for full license information.
+Repository: https://github.com/Hany-hazem/Fairy
+Contact: hany.hazem.cs@gmail.com
 """
 
 import asyncio

@@ -3,6 +3,11 @@ Integration module for task completion with Git workflow automation.
 
 This module provides seamless integration between task completion tracking
 and the automated Git workflow system.
+
+Copyright (c) 2024 Hani Hazem
+Licensed under the MIT License. See LICENSE file in the project root for full license information.
+Repository: https://github.com/Hany-hazem/Fairy
+Contact: hany.hazem.cs@gmail.com
 """
 
 import os

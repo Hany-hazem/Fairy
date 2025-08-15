@@ -4,6 +4,11 @@ Git Workflow Manager for automated repository updates and task completion tracki
 This module provides automated Git workflow integration for task completion,
 including intelligent commit message generation, branch management, and
 repository synchronization.
+
+Copyright (c) 2024 Hani Hazem
+Licensed under the MIT License. See LICENSE file in the project root for full license information.
+Repository: https://github.com/Hany-hazem/Fairy
+Contact: hany.hazem.cs@gmail.com
 """
 
 import os
