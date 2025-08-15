@@ -1,0 +1,32 @@
+{
+  "general_query": {
+    "type": "llm",
+    "topic": "general_queries",
+    "description": "General purpose LLM agent for text queries"
+  },
+  "vision": {
+    "type": "vision",
+    "topic": "vision_tasks",
+    "description": "Vision agent for image processing and captioning"
+  },
+  "ai_assistant": {
+    "type": "ai_assistant",
+    "topic": "ai_assistant_tasks",
+    "description": "Advanced conversational AI assistant with context management"
+  },
+  "self_improvement": {
+    "type": "self_improvement",
+    "topic": "self_improvement_tasks",
+    "description": "Self-improvement agent for code analysis and autonomous improvements"
+  },
+  "code_analysis": {
+    "type": "code_analysis",
+    "topic": "code_analysis_tasks",
+    "description": "Code quality analysis and improvement suggestions"
+  },
+  "performance_analysis": {
+    "type": "performance_analysis",
+    "topic": "performance_analysis_tasks",
+    "description": "System performance monitoring and analysis"
+  }
+}

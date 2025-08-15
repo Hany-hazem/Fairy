@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # --------- LLM Studio ----------
+  llm-studio:
+    image: ghcr.io/huggingface/llm-studio:latest   # pick the official image or build your own
+    environment:
+      - HF_TOKEN=${HF_TOKEN}   # if you pull private models
+      - MODEL_PATH=/models/gpt-oss-20b  # or whatever you want to serve
+    volumes:
+      - ./models:/models
+    ports:
+      - "8000:8000"
+    command: >
+      python3 -m llm_studio --model-path /models/gpt-oss-20b \
+                            --port 8000
+
+  # --------- Orchestrator ----------
+  orchestrator:
+    build: .
+    environment:
+      - MODEL_PATH=/models/gpt-oss-20b
+      - REDIS_URL=redis://redis:6379
+      - LLM_STUDIO_URL=http://llm-studio:8000
+      - MODEL_BACKENDS={"gpt-oss-20b":"huggingface","studio-lora-7b":"studio"}
+    depends_on:
+      - redis
+      - llm-studio
+    ports:
+      - "8001:8000"

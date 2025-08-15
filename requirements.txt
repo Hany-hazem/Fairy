@@ -1,0 +1,13 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+pydantic
+transformers
+sentence-transformers
+faiss-cpu   # or use chromadb if you prefer
+redis
+requests
+torch  #
+coverage
+pytest
+httpx
