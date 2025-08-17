@@ -1,13 +1,52 @@
-# requirements.txt
-fastapi
-uvicorn[standard]
-pydantic
-transformers
-sentence-transformers
-faiss-cpu   # or use chromadb if you prefer
-redis
-requests
-torch  #
-coverage
-pytest
-httpx
+# Core FastAPI and web framework dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Redis dependencies for MCP backend
+redis[hiredis]>=5.0.0
+aioredis>=2.0.1
+
+# AI/ML dependencies
+torch>=2.0.0
+transformers>=4.35.0
+sentence-transformers>=2.2.2
+faiss-cpu>=1.7.4
+
+# Vision processing
+Pillow>=10.0.0
+
+# HTTP client
+httpx>=0.25.0
+aiohttp>=3.9.0
+
+# Data processing
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Utilities
+python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-dotenv>=1.0.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.7.0
+
+# Monitoring and logging
+structlog>=23.2.0
+prometheus-client>=0.19.0
+
+# Git integration
+GitPython>=3.1.40
+
+# Additional utilities
+click>=8.1.0
+rich>=13.7.0
+typer>=0.9.0

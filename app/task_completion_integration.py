@@ -17,6 +17,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from app.git_workflow_manager import GitWorkflowManager, TaskContext
+from app.task_git_bridge import TaskGitBridge
 
 
 class TaskCompletionIntegrator:
@@ -36,6 +37,7 @@ class TaskCompletionIntegrator:
         """
         self.repo_path = Path(repo_path)
         self.git_manager = GitWorkflowManager(repo_path)
+        self.task_git_bridge = TaskGitBridge(self.git_manager)
         self.specs_dir = self.repo_path / ".kiro" / "specs"
     
     def find_spec_files(self) -> List[Path]:
@@ -194,6 +196,12 @@ class TaskCompletionIntegrator:
         # Commit the task completion
         commit_hash = self.git_manager.commit_task_completion(task_context, auto_push)
         
+        # Update task-git bridge with completion
+        if commit_hash:
+            # Update task status from Git commit
+            import asyncio
+            asyncio.create_task(self.task_git_bridge.update_task_status_from_git(commit_hash))
+        
         # Update task status in spec file
         if target_spec_file:
             self.update_task_status_in_spec(target_spec_file, task_id, completed=True)
@@ -208,7 +216,12 @@ class TaskCompletionIntegrator:
                 completion_time=datetime.now()
             )
             
-            self.git_manager.commit_task_completion(spec_update_context, auto_push)
+            spec_commit_hash = self.git_manager.commit_task_completion(spec_update_context, auto_push)
+            
+            # Update task-git bridge with spec update
+            if spec_commit_hash:
+                import asyncio
+                asyncio.create_task(self.task_git_bridge.update_task_status_from_git(spec_commit_hash))
         
         return commit_hash
     
@@ -227,14 +240,17 @@ class TaskCompletionIntegrator:
         """
         # Find the task in spec files
         target_spec_file = spec_file
+        task_context = None
         if not target_spec_file:
             for spec_path in self.find_spec_files():
                 task_context = self.parse_task_from_spec(spec_path, task_id)
                 if task_context:
                     target_spec_file = spec_path
                     break
+        else:
+            task_context = self.parse_task_from_spec(target_spec_file, task_id)
         
-        if not target_spec_file:
+        if not target_spec_file or not task_context:
             raise ValueError(f"Task {task_id} not found in any specification file")
         
         # Update task status to in progress
@@ -244,6 +260,14 @@ class TaskCompletionIntegrator:
         branch_name = None
         if create_branch:
             branch_name = self.git_manager.create_feature_branch(task_id)
+            
+            # Link task to branch in task-git bridge
+            import asyncio
+            asyncio.create_task(self.task_git_bridge.link_task_to_branch(task_id, branch_name))
+            
+            # Add requirement references to task-git bridge
+            for req in task_context.requirements_addressed:
+                asyncio.create_task(self.task_git_bridge.add_requirement_reference(task_id, req))
         
         # Commit the status update
         status_update_context = TaskContext(
@@ -256,7 +280,12 @@ class TaskCompletionIntegrator:
             branch_name=branch_name
         )
         
-        self.git_manager.commit_task_completion(status_update_context, auto_push=True)
+        commit_hash = self.git_manager.commit_task_completion(status_update_context, auto_push=True)
+        
+        # Update task-git bridge with start commit
+        if commit_hash:
+            import asyncio
+            asyncio.create_task(self.task_git_bridge.update_task_status_from_git(commit_hash))
         
         return branch_name
     
@@ -286,6 +315,64 @@ class TaskCompletionIntegrator:
             progress["pending_tasks"] += spec_progress["pending"]
         
         return progress
+    
+    async def get_task_report(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get comprehensive task report with Git metrics.
+        
+        Args:
+            task_id: ID of the task
+            
+        Returns:
+            Task report dictionary or None if not found
+        """
+        report = await self.task_git_bridge.generate_task_completion_report(task_id)
+        if report:
+            return report.to_dict()
+        return None
+    
+    async def get_task_metrics(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get Git metrics for a specific task.
+        
+        Args:
+            task_id: ID of the task
+            
+        Returns:
+            Task metrics dictionary or None if not found
+        """
+        metrics = await self.task_git_bridge.get_task_git_metrics(task_id)
+        if metrics:
+            return metrics.to_dict()
+        return None
+    
+    def get_task_mapping(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get task-git mapping for a specific task.
+        
+        Args:
+            task_id: ID of the task
+            
+        Returns:
+            Task mapping dictionary or None if not found
+        """
+        mapping = self.task_git_bridge.get_task_mapping(task_id)
+        if mapping:
+            return mapping.to_dict()
+        return None
+    
+    def add_task_dependency(self, task_id: str, dependency_task_id: str) -> bool:
+        """
+        Add a dependency relationship between tasks.
+        
+        Args:
+            task_id: ID of the dependent task
+            dependency_task_id: ID of the task that this task depends on
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.task_git_bridge.add_task_dependency(task_id, dependency_task_id)
     
     def _analyze_spec_progress(self, spec_file: Path) -> Dict[str, int]:
         """

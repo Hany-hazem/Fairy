@@ -1,0 +1,62 @@
+# Dockerfile.git
+# Specialized Docker image for Git Workflow Service
+
+FROM python:3.11-slim
+
+# Install system dependencies including Git
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    gnupg \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional Git workflow dependencies
+RUN pip install --no-cache-dir \
+    GitPython \
+    dulwich \
+    pygit2 \
+    redis[hiredis] \
+    structlog
+
+# Copy application code
+COPY app/ ./app/
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data
+
+# Set Git configuration
+RUN git config --global init.defaultBranch main && \
+    git config --global user.name "MCP Git Bot" && \
+    git config --global user.email "mcp-git-bot@example.com" && \
+    git config --global core.autocrlf false && \
+    git config --global core.filemode false
+
+# Set environment variables
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    GIT_REPO_PATH=/workspace \
+    GIT_WORKFLOW_MODE=automatic \
+    LOG_LEVEL=INFO
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash gitbot && \
+    chown -R gitbot:gitbot /app
+USER gitbot
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "from app.git_workflow_manager import GitWorkflowManager; GitWorkflowManager().get_repository_status()" || exit 1
+
+# Start Git workflow service
+CMD ["python", "-m", "app.git_workflow_automation_service"]

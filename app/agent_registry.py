@@ -6,6 +6,7 @@ from typing import Dict, Optional, Any
 from enum import Enum
 
 from .config import settings
+from .mcp_integration import mcp_integration
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +23,16 @@ class AgentType(Enum):
 
 class AgentRegistry:
     """
-    Enhanced agent registry with support for AI assistant and self-improvement agents
+    Enhanced agent registry with MCP integration support
+    
+    Provides agent registration and routing with integration to the
+    enhanced MCP system for inter-agent communication.
     """
     
     def __init__(self, path: str):
         self.registry_path = path
         self.registry = self._load_registry()
+        self._mcp_registered_agents = {}  # Track MCP-registered agents
         logger.info(f"Agent registry loaded with {len(self.registry)} agents")
     
     def _load_registry(self) -> Dict[str, Any]:
@@ -99,7 +104,7 @@ class AgentRegistry:
     
     def register_agent(self, intent: str, agent_type: AgentType, 
                       topic: str, description: str, **kwargs) -> bool:
-        """Register a new agent configuration"""
+        """Register a new agent configuration with MCP integration"""
         try:
             agent_config = {
                 "type": agent_type.value,
@@ -116,6 +121,65 @@ class AgentRegistry:
             
         except Exception as e:
             logger.error(f"Failed to register agent '{intent}': {e}")
+            return False
+    
+    async def register_mcp_agent(self, agent_id: str, capabilities: List[Dict[str, Any]]) -> Optional[str]:
+        """
+        Register an agent with the MCP system
+        
+        Args:
+            agent_id: Unique agent identifier
+            capabilities: List of agent capabilities
+            
+        Returns:
+            Connection ID if successful
+        """
+        try:
+            if not mcp_integration._initialized:
+                logger.warning("MCP integration not initialized, cannot register agent")
+                return None
+            
+            connection_id = await mcp_integration.register_agent(agent_id, capabilities)
+            
+            if connection_id:
+                self._mcp_registered_agents[agent_id] = {
+                    "connection_id": connection_id,
+                    "capabilities": capabilities,
+                    "registered_at": datetime.utcnow().isoformat()
+                }
+                logger.info(f"Registered agent {agent_id} with MCP system")
+            
+            return connection_id
+            
+        except Exception as e:
+            logger.error(f"Failed to register agent {agent_id} with MCP: {e}")
+            return None
+    
+    async def unregister_mcp_agent(self, agent_id: str) -> bool:
+        """
+        Unregister an agent from the MCP system
+        
+        Args:
+            agent_id: Agent identifier to unregister
+            
+        Returns:
+            True if successful
+        """
+        try:
+            if not mcp_integration._initialized:
+                logger.warning("MCP integration not initialized")
+                return False
+            
+            success = await mcp_integration.unregister_agent(agent_id)
+            
+            if success and agent_id in self._mcp_registered_agents:
+                del self._mcp_registered_agents[agent_id]
+                logger.info(f"Unregistered agent {agent_id} from MCP system")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Failed to unregister agent {agent_id} from MCP: {e}")
             return False
     
     def unregister_agent(self, intent: str) -> bool:
@@ -167,6 +231,53 @@ class AgentRegistry:
         except Exception as e:
             logger.error(f"Failed to reload agent registry: {e}")
             return False
+    
+    def get_mcp_registered_agents(self) -> Dict[str, Dict[str, Any]]:
+        """Get list of MCP-registered agents"""
+        return self._mcp_registered_agents.copy()
+    
+    def is_mcp_registered(self, agent_id: str) -> bool:
+        """Check if an agent is registered with MCP"""
+        return agent_id in self._mcp_registered_agents
+    
+    async def route_message_to_agent(self, intent: str, message_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Route a message to an agent through MCP
+        
+        Args:
+            intent: Agent intent to route to
+            message_data: Message data to send
+            
+        Returns:
+            Response from agent if successful
+        """
+        try:
+            agent_config = self.get_agent(intent)
+            if not agent_config:
+                return None
+            
+            # For MCP-integrated agents, use MCP routing
+            agent_type = agent_config.get("type")
+            if agent_type in ["ai_assistant", "self_improvement"]:
+                # Create MCP message and route through MCP system
+                from .mcp_models import MCPMessage, MCPMessageType
+                
+                message = MCPMessage(
+                    type=MCPMessageType.AGENT_REQUEST.value,
+                    source_agent="agent_registry",
+                    target_agents=[f"{agent_type}_agent"],
+                    payload=message_data
+                )
+                
+                success = await mcp_integration.send_message(message)
+                if success:
+                    return {"status": "sent", "message_id": message.id}
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to route message to agent {intent}: {e}")
+            return None
 
 
 # Singleton instance

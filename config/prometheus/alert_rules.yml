@@ -1,0 +1,97 @@
+# Prometheus alert rules for MCP integration
+
+groups:
+  - name: mcp_integration_alerts
+    rules:
+      # Overall health alerts
+      - alert: MCPIntegrationDown
+        expr: mcp_integration_health_status < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MCP Integration is unhealthy"
+          description: "MCP Integration overall health status is {{ $value }}"
+
+      - alert: MCPIntegrationDegraded
+        expr: mcp_integration_health_status < 1 and mcp_integration_health_status >= 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MCP Integration is degraded"
+          description: "MCP Integration is running in degraded mode"
+
+      # Component-specific alerts
+      - alert: RedisDown
+        expr: mcp_integration_component_health{component="redis"} < 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis component is unhealthy"
+
+      - alert: GitRepositoryIssues
+        expr: mcp_integration_component_health{component="git"} < 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Git repository has issues"
+          description: "Git repository component is unhealthy"
+
+      - alert: MCPServerDown
+        expr: mcp_integration_component_health{component="mcp_server"} < 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MCP Server is down"
+          description: "MCP Server component is unhealthy"
+
+      - alert: ConfigurationIssues
+        expr: mcp_integration_component_health{component="configuration"} < 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Configuration has issues"
+          description: "Configuration validation failed"
+
+      # Performance alerts
+      - alert: HighRedisResponseTime
+        expr: mcp_integration_redis_response_time_ms > 1000
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis response time"
+          description: "Redis response time is {{ $value }}ms"
+
+      - alert: HighRedisMemoryUsage
+        expr: mcp_integration_redis_memory_usage_percent > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is {{ $value }}%"
+
+      - alert: HighDiskUsage
+        expr: mcp_integration_filesystem_disk_usage_percent > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value }}%"
+
+      - alert: ManyUncommittedChanges
+        expr: mcp_integration_git_uncommitted_files > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Many uncommitted changes"
+          description: "{{ $value }} files have uncommitted changes"

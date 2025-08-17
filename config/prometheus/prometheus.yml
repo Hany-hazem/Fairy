@@ -1,0 +1,48 @@
+# Prometheus configuration for MCP integration monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+scrape_configs:
+  # MCP Server metrics
+  - job_name: 'mcp-server'
+    static_configs:
+      - targets: ['mcp-server:8765']
+    metrics_path: '/health/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-mcp:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Git workflow metrics
+  - job_name: 'git-workflow'
+    static_configs:
+      - targets: ['git-workflow:8080']
+    metrics_path: '/health/metrics'
+    scrape_interval: 60s
+
+  # Node exporter for system metrics (if available)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 30s
+
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
