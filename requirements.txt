@@ -16,6 +16,11 @@ faiss-cpu>=1.7.4
 
 # Vision processing
 Pillow>=10.0.0
+opencv-python>=4.8.0
+pytesseract>=0.3.10
+
+# System monitoring
+psutil>=5.9.0
 
 # HTTP client
 httpx>=0.25.0
