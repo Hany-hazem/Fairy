@@ -24,6 +24,11 @@ from .screen_monitor import ScreenMonitor, MonitoringMode, ScreenContext
 from .learning_engine import LearningEngine, BehaviorPattern, UserFeedback
 from .task_manager import TaskManager, Task, Project, TaskPriority, TaskStatus
 from .personal_knowledge_base import PersonalKnowledgeBase, SearchResult
+from .interaction_mode_manager import InteractionModeManager, InteractionMode, ModeTransition
+from .voice_processor import VoiceProcessor, VoiceCommand, VoiceResponse, VoiceSettings
+from .screen_overlay import ScreenOverlay, OverlayConfig, OverlayType, OverlayPosition
+from .text_completion import TextCompletion, TextContext, Completion, CompletionSettings
+from .accessibility_manager import AccessibilityManager, AccessibilitySettings
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,11 @@ class RequestType(Enum):
     TASK_MANAGEMENT = "task_management"
     KNOWLEDGE_SEARCH = "knowledge_search"
     LEARNING_FEEDBACK = "learning_feedback"
+    VOICE_COMMAND = "voice_command"
+    TEXT_COMPLETION = "text_completion"
+    VISUAL_FEEDBACK = "visual_feedback"
+    MODE_SWITCH = "mode_switch"
+    ACCESSIBILITY_REQUEST = "accessibility_request"
 
 
 @dataclass
@@ -125,6 +135,14 @@ class PersonalAssistantCore:
                 db_path=self.db.db_path
             )
             logger.info("TaskManager initialized")
+            
+            # Initialize Multi-Modal Interaction Manager
+            self._capability_modules['interaction_manager'] = InteractionModeManager(
+                voice_settings=VoiceSettings(),
+                completion_settings=CompletionSettings(),
+                accessibility_settings=AccessibilitySettings()
+            )
+            logger.info("InteractionModeManager initialized")
             
             # Screen Monitor and Knowledge Base will be initialized per-user
             # as they require user-specific configuration
@@ -373,6 +391,16 @@ class PersonalAssistantCore:
             return await self._handle_knowledge_search(request, context)
         elif request.request_type == RequestType.LEARNING_FEEDBACK:
             return await self._handle_learning_feedback(request, context)
+        elif request.request_type == RequestType.VOICE_COMMAND:
+            return await self._handle_voice_command(request, context)
+        elif request.request_type == RequestType.TEXT_COMPLETION:
+            return await self._handle_text_completion(request, context)
+        elif request.request_type == RequestType.VISUAL_FEEDBACK:
+            return await self._handle_visual_feedback(request, context)
+        elif request.request_type == RequestType.MODE_SWITCH:
+            return await self._handle_mode_switch(request, context)
+        elif request.request_type == RequestType.ACCESSIBILITY_REQUEST:
+            return await self._handle_accessibility_request(request, context)
         else:
             return AssistantResponse(
                 content="I don't understand that type of request.",
@@ -972,6 +1000,381 @@ class PersonalAssistantCore:
                 suggestions=["Please try again."]
             )
     
+    async def _handle_voice_command(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle voice command requests"""
+        try:
+            interaction_manager = self._capability_modules.get('interaction_manager')
+            if not interaction_manager:
+                return AssistantResponse(
+                    content="Voice interaction is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try using text input instead."]
+                )
+            
+            # Extract voice command data
+            command_text = request.metadata.get('command_text', request.content)
+            intent = request.metadata.get('intent', 'general_query')
+            entities = request.metadata.get('entities', {})
+            confidence = request.metadata.get('confidence', 0.5)
+            
+            # Process voice command through interaction manager
+            interaction_data = {
+                "type": "voice_command",
+                "command": command_text,
+                "intent": intent,
+                "entities": entities,
+                "confidence": confidence,
+                "user_id": request.user_id
+            }
+            
+            result = await interaction_manager.process_interaction(interaction_data)
+            
+            if result.get("success", False):
+                responses = result.get("responses", [])
+                response_content = []
+                
+                for resp in responses:
+                    if resp["type"] == "text":
+                        response_content.append(resp["content"])
+                    elif resp["type"] == "voice":
+                        response_content.append(f"[Voice] {resp['content']}")
+                    elif resp["type"] == "visual":
+                        response_content.append(f"[Visual] {resp['content']}")
+                
+                return AssistantResponse(
+                    content="\n".join(response_content) if response_content else "Voice command processed.",
+                    success=True,
+                    metadata={"voice_processed": True, "responses": responses},
+                    suggestions=[]
+                )
+            else:
+                return AssistantResponse(
+                    content=f"Voice command processing failed: {result.get('error', 'Unknown error')}",
+                    success=False,
+                    metadata={"error": result.get('error')},
+                    suggestions=["Try rephrasing your voice command."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling voice command: {e}")
+            return AssistantResponse(
+                content=f"Voice command error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Please try again or use text input."]
+            )
+    
+    async def _handle_text_completion(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle text completion requests"""
+        try:
+            interaction_manager = self._capability_modules.get('interaction_manager')
+            if not interaction_manager:
+                return AssistantResponse(
+                    content="Text completion is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try typing without completion assistance."]
+                )
+            
+            # Extract text context
+            text_before = request.metadata.get('text_before', '')
+            text_after = request.metadata.get('text_after', '')
+            cursor_position = request.metadata.get('cursor_position', 0)
+            context_type = request.metadata.get('context_type', 'general')
+            application = request.metadata.get('application')
+            file_type = request.metadata.get('file_type')
+            
+            # Create text context
+            from .text_completion import TextContext, ContextType
+            text_context = TextContext(
+                text_before=text_before,
+                text_after=text_after,
+                cursor_position=cursor_position,
+                context_type=ContextType(context_type) if context_type in [ct.value for ct in ContextType] else ContextType.GENERAL,
+                application=application,
+                file_type=file_type,
+                metadata={"user_id": request.user_id}
+            )
+            
+            # Get completions
+            completions = await interaction_manager.get_text_completions(text_context)
+            
+            completion_data = []
+            for completion in completions:
+                completion_data.append({
+                    "text": completion.text,
+                    "type": completion.completion_type.value,
+                    "confidence": completion.confidence,
+                    "description": completion.description,
+                    "source": completion.source
+                })
+            
+            return AssistantResponse(
+                content=f"Found {len(completions)} text completions.",
+                success=True,
+                metadata={
+                    "completions": completion_data,
+                    "completion_count": len(completions)
+                },
+                suggestions=[comp.text for comp in completions[:3]]  # Top 3 as suggestions
+            )
+            
+        except Exception as e:
+            logger.error(f"Error handling text completion: {e}")
+            return AssistantResponse(
+                content=f"Text completion error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Try typing without completion assistance."]
+            )
+    
+    async def _handle_visual_feedback(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle visual feedback requests"""
+        try:
+            interaction_manager = self._capability_modules.get('interaction_manager')
+            if not interaction_manager:
+                return AssistantResponse(
+                    content="Visual feedback is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Visual feedback requires display capabilities."]
+                )
+            
+            # Extract visual feedback data
+            message = request.metadata.get('message', request.content)
+            feedback_type = request.metadata.get('feedback_type', 'info')
+            duration = request.metadata.get('duration', 3.0)
+            position = request.metadata.get('position', 'bottom_right')
+            
+            # Show visual feedback
+            overlay_id = await interaction_manager.show_visual_feedback(message, feedback_type)
+            
+            if overlay_id:
+                return AssistantResponse(
+                    content=f"Visual feedback displayed: {message}",
+                    success=True,
+                    metadata={
+                        "overlay_id": overlay_id,
+                        "feedback_type": feedback_type,
+                        "message": message
+                    },
+                    suggestions=[]
+                )
+            else:
+                return AssistantResponse(
+                    content="Failed to display visual feedback.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Check if visual display is available."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling visual feedback: {e}")
+            return AssistantResponse(
+                content=f"Visual feedback error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Try again or use text feedback."]
+            )
+    
+    async def _handle_mode_switch(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle interaction mode switch requests"""
+        try:
+            interaction_manager = self._capability_modules.get('interaction_manager')
+            if not interaction_manager:
+                return AssistantResponse(
+                    content="Interaction mode switching is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Mode switching requires multi-modal support."]
+                )
+            
+            # Extract mode switch data
+            target_mode = request.metadata.get('target_mode', 'text')
+            transition_type = request.metadata.get('transition_type', 'user_initiated')
+            preserve_context = request.metadata.get('preserve_context', True)
+            
+            # Map string to enum
+            mode_mapping = {
+                'text': InteractionMode.TEXT,
+                'voice': InteractionMode.VOICE,
+                'visual': InteractionMode.VISUAL,
+                'mixed': InteractionMode.MIXED,
+                'accessibility': InteractionMode.ACCESSIBILITY
+            }
+            
+            transition_mapping = {
+                'user_initiated': ModeTransition.USER_INITIATED,
+                'automatic': ModeTransition.AUTOMATIC,
+                'context_based': ModeTransition.CONTEXT_BASED,
+                'accessibility_required': ModeTransition.ACCESSIBILITY_REQUIRED
+            }
+            
+            if target_mode not in mode_mapping:
+                return AssistantResponse(
+                    content=f"Unknown interaction mode: {target_mode}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Available modes: text, voice, visual, mixed, accessibility"]
+                )
+            
+            # Switch mode
+            success = await interaction_manager.switch_mode(
+                mode_mapping[target_mode],
+                transition_mapping.get(transition_type, ModeTransition.USER_INITIATED),
+                preserve_context
+            )
+            
+            if success:
+                current_mode = interaction_manager.get_current_mode()
+                return AssistantResponse(
+                    content=f"Successfully switched to {current_mode.value} mode.",
+                    success=True,
+                    metadata={
+                        "previous_mode": interaction_manager.context.previous_mode.value if interaction_manager.context.previous_mode else None,
+                        "current_mode": current_mode.value,
+                        "context_preserved": preserve_context
+                    },
+                    suggestions=[]
+                )
+            else:
+                return AssistantResponse(
+                    content=f"Failed to switch to {target_mode} mode.",
+                    success=False,
+                    metadata={"target_mode": target_mode},
+                    suggestions=["Check if the target mode is supported on your system."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling mode switch: {e}")
+            return AssistantResponse(
+                content=f"Mode switch error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Try switching modes again."]
+            )
+    
+    async def _handle_accessibility_request(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle accessibility-related requests"""
+        try:
+            interaction_manager = self._capability_modules.get('interaction_manager')
+            if not interaction_manager:
+                return AssistantResponse(
+                    content="Accessibility features are not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Accessibility support requires proper system configuration."]
+                )
+            
+            accessibility_manager = interaction_manager.accessibility_manager
+            action = request.metadata.get('action', 'get_status')
+            
+            if action == 'get_status':
+                status = accessibility_manager.get_accessibility_status()
+                return AssistantResponse(
+                    content="Accessibility status retrieved.",
+                    success=True,
+                    metadata={"accessibility_status": status},
+                    suggestions=[]
+                )
+            
+            elif action == 'enable_feature':
+                feature_name = request.metadata.get('feature')
+                if not feature_name:
+                    return AssistantResponse(
+                        content="Feature name is required to enable accessibility feature.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Specify which accessibility feature to enable."]
+                    )
+                
+                try:
+                    from .accessibility_manager import AccessibilityFeature
+                    feature = AccessibilityFeature(feature_name)
+                    accessibility_manager.enable_feature(feature)
+                    
+                    return AssistantResponse(
+                        content=f"Accessibility feature '{feature_name}' enabled.",
+                        success=True,
+                        metadata={"enabled_feature": feature_name},
+                        suggestions=[]
+                    )
+                except ValueError:
+                    return AssistantResponse(
+                        content=f"Unknown accessibility feature: {feature_name}",
+                        success=False,
+                        metadata={},
+                        suggestions=["Available features: screen_reader, keyboard_navigation, high_contrast, large_text, voice_control, reduced_motion"]
+                    )
+            
+            elif action == 'disable_feature':
+                feature_name = request.metadata.get('feature')
+                if not feature_name:
+                    return AssistantResponse(
+                        content="Feature name is required to disable accessibility feature.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Specify which accessibility feature to disable."]
+                    )
+                
+                try:
+                    from .accessibility_manager import AccessibilityFeature
+                    feature = AccessibilityFeature(feature_name)
+                    accessibility_manager.disable_feature(feature)
+                    
+                    return AssistantResponse(
+                        content=f"Accessibility feature '{feature_name}' disabled.",
+                        success=True,
+                        metadata={"disabled_feature": feature_name},
+                        suggestions=[]
+                    )
+                except ValueError:
+                    return AssistantResponse(
+                        content=f"Unknown accessibility feature: {feature_name}",
+                        success=False,
+                        metadata={},
+                        suggestions=["Available features: screen_reader, keyboard_navigation, high_contrast, large_text, voice_control, reduced_motion"]
+                    )
+            
+            elif action == 'check_compliance':
+                compliance = accessibility_manager.check_wcag_compliance()
+                return AssistantResponse(
+                    content=f"WCAG compliance level: {compliance['compliance_level']}",
+                    success=True,
+                    metadata={"compliance_check": compliance},
+                    suggestions=compliance.get('recommendations', [])
+                )
+            
+            elif action == 'announce':
+                text = request.metadata.get('text', request.content)
+                priority = request.metadata.get('priority', 'normal')
+                
+                await accessibility_manager.announce_to_screen_reader(text, priority)
+                return AssistantResponse(
+                    content=f"Announced to screen reader: {text}",
+                    success=True,
+                    metadata={"announced_text": text, "priority": priority},
+                    suggestions=[]
+                )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown accessibility action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Available actions: get_status, enable_feature, disable_feature, check_compliance, announce"]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling accessibility request: {e}")
+            return AssistantResponse(
+                content=f"Accessibility request error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Try the accessibility request again."]
+            )
+    
     def _map_request_to_interaction_type(self, request_type: RequestType) -> InteractionType:
         """Map request type to interaction type"""
         mapping = {
@@ -985,6 +1388,11 @@ class PersonalAssistantCore:
             RequestType.TASK_MANAGEMENT: InteractionType.COMMAND,
             RequestType.KNOWLEDGE_SEARCH: InteractionType.QUERY,
             RequestType.LEARNING_FEEDBACK: InteractionType.FEEDBACK,
+            RequestType.VOICE_COMMAND: InteractionType.COMMAND,
+            RequestType.TEXT_COMPLETION: InteractionType.QUERY,
+            RequestType.VISUAL_FEEDBACK: InteractionType.COMMAND,
+            RequestType.MODE_SWITCH: InteractionType.COMMAND,
+            RequestType.ACCESSIBILITY_REQUEST: InteractionType.COMMAND,
         }
         return mapping.get(request_type, InteractionType.QUERY)
     
