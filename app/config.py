@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     MODEL_PATH: str = Field("./models", env="MODEL_PATH")          # local path to GPT‑OSS‑20B
     REDIS_URL: str = "redis://localhost:6379"
     USE_VLLM: bool = False                                 # set True if you have GPU + vllm
+    
+    # Application settings
+    LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")
+    USE_REAL_LLM: bool = Field(True, env="USE_REAL_LLM")
+    SAFETY_LEVEL: str = Field("conservative", env="SAFETY_LEVEL")
 
     # Safety
     OPENAI_MODERATION_KEY: str | None = Field(None, env="OPENAI_MODERATION_KEY")
@@ -52,6 +57,8 @@ class Settings(BaseSettings):
 
     # URL of the LLM Studio server (default to localhost if you run it locally)
     LLMS_STUDIO_URL: str = Field("http://localhost:1234", env="LLM_STUDIO_URL")
+    # Also support the alternative env var name for compatibility
+    LLM_STUDIO_URL: str = Field("http://localhost:1234", env="LLM_STUDIO_URL")
     
     # LM Studio specific configuration for GPT-OSS-20B
     LM_STUDIO_MODEL: str = Field("gpt-oss-20b", env="LM_STUDIO_MODEL")

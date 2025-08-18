@@ -28,6 +28,7 @@ from .performance_monitor import performance_monitor
 from .performance_analyzer import get_performance_analyzer
 from .code_analyzer import code_analyzer
 from .self_improvement_engine import get_self_improvement_engine
+from .personal_assistant_models import PermissionType
 
 # Import legacy components with error handling
 try:
@@ -2088,6 +2089,560 @@ async def get_privacy_violations(
             "resolved": resolved,
             "timestamp": datetime.now().isoformat()
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# PERSONAL ASSISTANT ENDPOINTS
+# ============================================================================
+
+# File System Operations
+class FileOperationRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    operation: str = Field(..., description="File operation type (read, write, list, search, organize)")
+    file_path: Optional[str] = Field(None, description="File path for operation")
+    content: Optional[str] = Field(None, description="Content for write operations")
+    search_query: Optional[str] = Field(None, description="Search query for file search")
+    organization_strategy: Optional[str] = Field(None, description="Organization strategy")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+@app.post("/assistant/files/operation", tags=["Personal Assistant - Files"])
+async def handle_file_operation(request: FileOperationRequest):
+    """Handle file system operations with user permission checks"""
+    try:
+        from .personal_assistant_core import PersonalAssistantCore, AssistantRequest, RequestType
+        
+        # Initialize personal assistant core
+        assistant_core = PersonalAssistantCore()
+        
+        # Create assistant request
+        assistant_request = AssistantRequest(
+            user_id=request.user_id,
+            request_type=RequestType.FILE_OPERATION,
+            content=f"File operation: {request.operation}",
+            metadata={
+                "operation": request.operation,
+                "file_path": request.file_path,
+                "content": request.content,
+                "search_query": request.search_query,
+                "organization_strategy": request.organization_strategy,
+                **request.metadata
+            }
+        )
+        
+        # Process the request
+        response = await assistant_core.process_request(assistant_request)
+        
+        return {
+            "success": response.success,
+            "content": response.content,
+            "metadata": response.metadata,
+            "suggestions": response.suggestions,
+            "requires_permission": response.requires_permission,
+            "permission_type": response.permission_type.value if response.permission_type else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/files/list/{user_id}", tags=["Personal Assistant - Files"])
+async def list_user_files(
+    user_id: str = Path(..., description="User ID"),
+    directory: Optional[str] = QueryParam(None, description="Directory to list"),
+    file_type: Optional[str] = QueryParam(None, description="Filter by file type"),
+    limit: int = QueryParam(100, ge=1, le=1000, description="Maximum files to return")
+):
+    """List files accessible to the user"""
+    try:
+        from .file_system_manager import FileSystemManager
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        file_manager = FileSystemManager(privacy_manager)
+        
+        # Check permissions
+        has_permission = await privacy_manager.check_permission(user_id, PermissionType.FILE_READ)
+        if not has_permission:
+            raise HTTPException(status_code=403, detail="File read permission required")
+        
+        # List files
+        files = await file_manager.list_files(user_id, directory, file_type, limit)
+        
+        return {
+            "files": files,
+            "directory": directory,
+            "file_type": file_type,
+            "count": len(files),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/files/search/{user_id}", tags=["Personal Assistant - Files"])
+async def search_files(
+    user_id: str = Path(..., description="User ID"),
+    query: str = QueryParam(..., description="Search query"),
+    file_types: Optional[str] = QueryParam(None, description="Comma-separated file types"),
+    limit: int = QueryParam(50, ge=1, le=500, description="Maximum results to return")
+):
+    """Search files by content and metadata"""
+    try:
+        from .file_system_manager import FileSystemManager
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        file_manager = FileSystemManager(privacy_manager)
+        
+        # Check permissions
+        has_permission = await privacy_manager.check_permission(user_id, PermissionType.FILE_READ)
+        if not has_permission:
+            raise HTTPException(status_code=403, detail="File read permission required")
+        
+        # Parse file types
+        file_type_list = file_types.split(',') if file_types else None
+        
+        # Search files
+        results = await file_manager.search_files(user_id, query, file_type_list, limit)
+        
+        return {
+            "results": results,
+            "query": query,
+            "file_types": file_type_list,
+            "count": len(results),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Screen Monitoring Endpoints
+class ScreenMonitoringRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    action: str = Field(..., description="Monitoring action (start, stop, status, get_context)")
+    config: Optional[Dict[str, Any]] = Field(None, description="Monitoring configuration")
+
+@app.post("/assistant/screen/control", tags=["Personal Assistant - Screen"])
+async def control_screen_monitoring(request: ScreenMonitoringRequest):
+    """Control screen monitoring functionality"""
+    try:
+        from .personal_assistant_core import PersonalAssistantCore, AssistantRequest, RequestType
+        
+        # Initialize personal assistant core
+        assistant_core = PersonalAssistantCore()
+        
+        # Create assistant request
+        assistant_request = AssistantRequest(
+            user_id=request.user_id,
+            request_type=RequestType.SCREEN_MONITORING,
+            content=f"Screen monitoring: {request.action}",
+            metadata={
+                "action": request.action,
+                "config": request.config or {}
+            }
+        )
+        
+        # Process the request
+        response = await assistant_core.process_request(assistant_request)
+        
+        return {
+            "success": response.success,
+            "content": response.content,
+            "metadata": response.metadata,
+            "requires_permission": response.requires_permission,
+            "permission_type": response.permission_type.value if response.permission_type else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/screen/context/{user_id}", tags=["Personal Assistant - Screen"])
+async def get_screen_context(
+    user_id: str = Path(..., description="User ID"),
+    include_history: bool = QueryParam(False, description="Include context history")
+):
+    """Get current screen context and analysis"""
+    try:
+        from .screen_monitor import ScreenMonitor
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        screen_monitor = ScreenMonitor(privacy_manager)
+        
+        # Check permissions
+        has_permission = await privacy_manager.check_permission(user_id, PermissionType.SCREEN_MONITOR)
+        if not has_permission:
+            raise HTTPException(status_code=403, detail="Screen monitoring permission required")
+        
+        # Get current context
+        context = await screen_monitor.get_current_context(user_id)
+        
+        result = {
+            "context": context.to_dict() if context else None,
+            "monitoring_active": await screen_monitor.is_monitoring_active(user_id),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        if include_history:
+            history = await screen_monitor.get_context_history(user_id, limit=10)
+            result["history"] = [ctx.to_dict() for ctx in history]
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Task Management Endpoints
+class TaskRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    action: str = Field(..., description="Task action (create, update, delete, list, complete)")
+    task_id: Optional[str] = Field(None, description="Task ID for update/delete operations")
+    title: Optional[str] = Field(None, description="Task title")
+    description: Optional[str] = Field(None, description="Task description")
+    priority: Optional[str] = Field(None, description="Task priority (low, medium, high, urgent)")
+    due_date: Optional[str] = Field(None, description="Due date (ISO format)")
+    project_id: Optional[str] = Field(None, description="Associated project ID")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+@app.post("/assistant/tasks/manage", tags=["Personal Assistant - Tasks"])
+async def manage_tasks(request: TaskRequest):
+    """Manage tasks and projects"""
+    try:
+        from .personal_assistant_core import PersonalAssistantCore, AssistantRequest, RequestType
+        
+        # Initialize personal assistant core
+        assistant_core = PersonalAssistantCore()
+        
+        # Create assistant request
+        assistant_request = AssistantRequest(
+            user_id=request.user_id,
+            request_type=RequestType.TASK_MANAGEMENT,
+            content=f"Task management: {request.action}",
+            metadata={
+                "action": request.action,
+                "task_id": request.task_id,
+                "title": request.title,
+                "description": request.description,
+                "priority": request.priority,
+                "due_date": request.due_date,
+                "project_id": request.project_id,
+                **request.metadata
+            }
+        )
+        
+        # Process the request
+        response = await assistant_core.process_request(assistant_request)
+        
+        return {
+            "success": response.success,
+            "content": response.content,
+            "metadata": response.metadata,
+            "suggestions": response.suggestions,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/tasks/{user_id}", tags=["Personal Assistant - Tasks"])
+async def get_user_tasks(
+    user_id: str = Path(..., description="User ID"),
+    status: Optional[str] = QueryParam(None, description="Filter by status"),
+    priority: Optional[str] = QueryParam(None, description="Filter by priority"),
+    project_id: Optional[str] = QueryParam(None, description="Filter by project"),
+    limit: int = QueryParam(50, ge=1, le=200, description="Maximum tasks to return")
+):
+    """Get user tasks with optional filtering"""
+    try:
+        from .task_manager import TaskManager
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        task_manager = TaskManager(privacy_manager)
+        
+        # Get tasks
+        tasks = await task_manager.get_user_tasks(
+            user_id, status, priority, project_id, limit
+        )
+        
+        return {
+            "tasks": [task.to_dict() for task in tasks],
+            "filters": {
+                "status": status,
+                "priority": priority,
+                "project_id": project_id
+            },
+            "count": len(tasks),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/tasks/{user_id}/upcoming", tags=["Personal Assistant - Tasks"])
+async def get_upcoming_deadlines(
+    user_id: str = Path(..., description="User ID"),
+    days: int = QueryParam(7, ge=1, le=30, description="Days ahead to check")
+):
+    """Get upcoming task deadlines"""
+    try:
+        from .task_manager import TaskManager
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        task_manager = TaskManager(privacy_manager)
+        
+        # Get upcoming deadlines
+        deadlines = await task_manager.get_upcoming_deadlines(user_id, days)
+        
+        return {
+            "deadlines": deadlines,
+            "days_ahead": days,
+            "count": len(deadlines),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Knowledge Base Endpoints
+class KnowledgeSearchRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    query: str = Field(..., description="Search query")
+    search_type: str = Field("semantic", description="Search type (semantic, keyword, hybrid)")
+    limit: int = Field(10, ge=1, le=50, description="Maximum results to return")
+    include_metadata: bool = Field(True, description="Include result metadata")
+
+@app.post("/assistant/knowledge/search", tags=["Personal Assistant - Knowledge"])
+async def search_knowledge_base(request: KnowledgeSearchRequest):
+    """Search the personal knowledge base"""
+    try:
+        from .personal_knowledge_base import PersonalKnowledgeBase
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        knowledge_base = PersonalKnowledgeBase(privacy_manager)
+        
+        # Search knowledge base
+        results = await knowledge_base.search(
+            user_id=request.user_id,
+            query=request.query,
+            search_type=request.search_type,
+            limit=request.limit,
+            include_metadata=request.include_metadata
+        )
+        
+        return {
+            "results": [result.to_dict() for result in results],
+            "query": request.query,
+            "search_type": request.search_type,
+            "count": len(results),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/knowledge/{user_id}/topics", tags=["Personal Assistant - Knowledge"])
+async def get_knowledge_topics(
+    user_id: str = Path(..., description="User ID"),
+    limit: int = QueryParam(20, ge=1, le=100, description="Maximum topics to return")
+):
+    """Get knowledge topics and expertise areas"""
+    try:
+        from .personal_knowledge_base import PersonalKnowledgeBase
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        knowledge_base = PersonalKnowledgeBase(privacy_manager)
+        
+        # Get topics
+        topics = await knowledge_base.get_user_topics(user_id, limit)
+        
+        return {
+            "topics": topics,
+            "count": len(topics),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/assistant/knowledge/index", tags=["Personal Assistant - Knowledge"])
+async def index_document(
+    user_id: str = Body(..., description="User ID"),
+    document_path: str = Body(..., description="Document path to index"),
+    document_type: Optional[str] = Body(None, description="Document type"),
+    extract_entities: bool = Body(True, description="Extract entities from document")
+):
+    """Index a document in the knowledge base"""
+    try:
+        from .personal_knowledge_base import PersonalKnowledgeBase
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        knowledge_base = PersonalKnowledgeBase(privacy_manager)
+        
+        # Index document
+        success = await knowledge_base.index_document(
+            user_id, document_path, document_type, extract_entities
+        )
+        
+        return {
+            "success": success,
+            "document_path": document_path,
+            "document_type": document_type,
+            "extract_entities": extract_entities,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Privacy Control and Permission Management Endpoints
+@app.post("/assistant/privacy/permissions/grant", tags=["Personal Assistant - Privacy"])
+async def grant_permission(request: PermissionRequest):
+    """Grant permission for specific data access"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        from .personal_assistant_models import PermissionType
+        
+        privacy_manager = PrivacySecurityManager()
+        permission_type = PermissionType(request.permission_type)
+        
+        success = await privacy_manager.grant_permission(
+            request.user_id, permission_type, request.scope, request.expires_in_days
+        )
+        
+        return {
+            "success": success,
+            "permission_type": request.permission_type,
+            "user_id": request.user_id,
+            "expires_in_days": request.expires_in_days,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/assistant/privacy/permissions/revoke", tags=["Personal Assistant - Privacy"])
+async def revoke_permission(
+    user_id: str = Body(..., description="User ID"),
+    permission_type: str = Body(..., description="Permission type to revoke")
+):
+    """Revoke a specific permission"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        from .personal_assistant_models import PermissionType
+        
+        privacy_manager = PrivacySecurityManager()
+        permission_type_enum = PermissionType(permission_type)
+        
+        success = await privacy_manager.revoke_permission(user_id, permission_type_enum)
+        
+        return {
+            "success": success,
+            "permission_type": permission_type,
+            "user_id": user_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/privacy/permissions/{user_id}", tags=["Personal Assistant - Privacy"])
+async def list_user_permissions(
+    user_id: str = Path(..., description="User ID")
+):
+    """List all permissions for a user"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        privacy_manager = PrivacySecurityManager()
+        permissions = await privacy_manager.get_all_permissions(user_id)
+        
+        return {
+            "permissions": [
+                {
+                    "permission_type": perm.permission_type.value,
+                    "granted": perm.granted,
+                    "granted_at": perm.granted_at.isoformat() if perm.granted_at else None,
+                    "expires_at": perm.expires_at.isoformat() if perm.expires_at else None,
+                    "scope": perm.scope,
+                    "revoked": perm.revoked
+                }
+                for perm in permissions
+            ],
+            "user_id": user_id,
+            "count": len(permissions),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/assistant/context/{user_id}", tags=["Personal Assistant - Context"])
+async def get_user_context(
+    user_id: str = Path(..., description="User ID"),
+    include_history: bool = QueryParam(False, description="Include interaction history")
+):
+    """Get current user context and state"""
+    try:
+        from .user_context_manager import UserContextManager
+        
+        context_manager = UserContextManager()
+        context = await context_manager.get_user_context(user_id)
+        
+        result = {
+            "context": context.to_dict() if context else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        if include_history and context:
+            result["interaction_history"] = [
+                interaction.to_dict() for interaction in context.recent_interactions[-10:]
+            ]
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/assistant/context/update", tags=["Personal Assistant - Context"])
+async def update_user_context(
+    user_id: str = Body(..., description="User ID"),
+    context_updates: Dict[str, Any] = Body(..., description="Context updates"),
+    merge_strategy: str = Body("merge", description="Update strategy (merge, replace)")
+):
+    """Update user context information"""
+    try:
+        from .user_context_manager import UserContextManager
+        
+        context_manager = UserContextManager()
+        success = await context_manager.update_context(
+            user_id, context_updates, merge_strategy
+        )
+        
+        return {
+            "success": success,
+            "user_id": user_id,
+            "merge_strategy": merge_strategy,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
