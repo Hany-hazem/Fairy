@@ -30,6 +30,7 @@ from .screen_overlay import ScreenOverlay, OverlayConfig, OverlayType, OverlayPo
 from .text_completion import TextCompletion, TextContext, Completion, CompletionSettings
 from .accessibility_manager import AccessibilityManager, AccessibilitySettings
 from .integration_hub import IntegrationHub
+from .proactive_assistant import ProactiveAssistant, ProactiveOpportunity, OpportunityType
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class RequestType(Enum):
     MODE_SWITCH = "mode_switch"
     ACCESSIBILITY_REQUEST = "accessibility_request"
     INTEGRATION_REQUEST = "integration_request"
+    PROACTIVE_ASSISTANCE = "proactive_assistance"
 
 
 @dataclass
@@ -176,6 +178,15 @@ class PersonalAssistantCore:
                 # Initialize Personal Knowledge Base for user
                 self._capability_modules[user_key]['knowledge_base'] = PersonalKnowledgeBase(
                     user_id=user_id
+                )
+                
+                # Initialize Proactive Assistant for user
+                self._capability_modules[user_key]['proactive_assistant'] = ProactiveAssistant(
+                    learning_engine=self._capability_modules['learning'],
+                    task_manager=self._capability_modules['task_manager'],
+                    screen_monitor=self._capability_modules[user_key]['screen_monitor'],
+                    knowledge_base=self._capability_modules[user_key]['knowledge_base'],
+                    context_manager=self.context_manager
                 )
                 
                 logger.info(f"User-specific modules initialized for user {user_id}")
@@ -413,6 +424,8 @@ class PersonalAssistantCore:
             return await self._handle_accessibility_request(request, context)
         elif request.request_type == RequestType.INTEGRATION_REQUEST:
             return await self._handle_integration_request(request, context)
+        elif request.request_type == RequestType.PROACTIVE_ASSISTANCE:
+            return await self._handle_proactive_assistance(request, context)
         else:
             return AssistantResponse(
                 content="I don't understand that type of request.",
@@ -1493,6 +1506,207 @@ class PersonalAssistantCore:
                 suggestions=["Try the integration request again or check your connection settings."]
             )
     
+    async def _handle_proactive_assistance(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle proactive assistance requests"""
+        try:
+            user_modules = await self._get_or_create_user_modules(request.user_id)
+            proactive_assistant = user_modules.get('proactive_assistant')
+            
+            if not proactive_assistant:
+                return AssistantResponse(
+                    content="Proactive assistance is not available. Please try again later.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Check your assistant configuration."]
+                )
+            
+            action = request.metadata.get('action', 'identify_opportunities')
+            
+            if action == 'identify_opportunities':
+                # Identify new proactive opportunities
+                opportunities = await proactive_assistant.identify_opportunities(request.user_id)
+                
+                if not opportunities:
+                    return AssistantResponse(
+                        content="I don't see any immediate opportunities for assistance right now. I'll keep monitoring and let you know when I find something helpful!",
+                        success=True,
+                        metadata={"opportunities_count": 0},
+                        suggestions=["Continue working - I'll proactively suggest improvements as I notice patterns."]
+                    )
+                
+                # Format opportunities for response
+                opportunity_summaries = []
+                for opp in opportunities[:5]:  # Show top 5 opportunities
+                    priority_emoji = {
+                        "urgent": "🚨",
+                        "high": "⚡",
+                        "medium": "💡",
+                        "low": "💭"
+                    }.get(opp.priority.value, "💡")
+                    
+                    opportunity_summaries.append(
+                        f"{priority_emoji} **{opp.title}**\n   {opp.description}\n   *Suggested: {opp.suggested_action}*"
+                    )
+                
+                content = f"I found {len(opportunities)} opportunities to help you:\n\n" + "\n\n".join(opportunity_summaries)
+                
+                if len(opportunities) > 5:
+                    content += f"\n\n... and {len(opportunities) - 5} more suggestions available."
+                
+                return AssistantResponse(
+                    content=content,
+                    success=True,
+                    metadata={
+                        "opportunities_count": len(opportunities),
+                        "opportunities": [
+                            {
+                                "id": opp.opportunity_id,
+                                "type": opp.opportunity_type.value,
+                                "title": opp.title,
+                                "priority": opp.priority.value,
+                                "confidence": opp.confidence
+                            }
+                            for opp in opportunities
+                        ]
+                    },
+                    suggestions=[
+                        "Tell me more about a specific suggestion",
+                        "Implement one of these suggestions",
+                        "Dismiss suggestions I'm not interested in"
+                    ]
+                )
+            
+            elif action == 'get_active_opportunities':
+                # Get currently active opportunities
+                active_opportunities = await proactive_assistant.get_active_opportunities(request.user_id)
+                
+                if not active_opportunities:
+                    return AssistantResponse(
+                        content="You don't have any active proactive suggestions right now.",
+                        success=True,
+                        metadata={"active_count": 0},
+                        suggestions=["Ask me to look for new opportunities."]
+                    )
+                
+                summaries = [f"• {opp.title}: {opp.description}" for opp in active_opportunities]
+                
+                return AssistantResponse(
+                    content=f"You have {len(active_opportunities)} active suggestions:\n\n" + "\n".join(summaries),
+                    success=True,
+                    metadata={
+                        "active_count": len(active_opportunities),
+                        "opportunities": [opp.__dict__ for opp in active_opportunities]
+                    },
+                    suggestions=["Act on a suggestion", "Dismiss a suggestion", "Get more details"]
+                )
+            
+            elif action == 'respond_to_opportunity':
+                # Process user response to an opportunity
+                opportunity_id = request.metadata.get('opportunity_id')
+                response_text = request.metadata.get('response', request.content)
+                action_taken = request.metadata.get('action_taken', False)
+                
+                if not opportunity_id:
+                    return AssistantResponse(
+                        content="Please specify which opportunity you're responding to.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Use the opportunity ID from the suggestion list."]
+                    )
+                
+                await proactive_assistant.process_user_response(
+                    request.user_id, opportunity_id, response_text, action_taken
+                )
+                
+                return AssistantResponse(
+                    content="Thank you for your feedback! I'll use this to improve future suggestions.",
+                    success=True,
+                    metadata={"feedback_recorded": True},
+                    suggestions=["Ask for new opportunities", "Check your suggestion statistics"]
+                )
+            
+            elif action == 'dismiss_opportunity':
+                # Dismiss a specific opportunity
+                opportunity_id = request.metadata.get('opportunity_id')
+                
+                if not opportunity_id:
+                    return AssistantResponse(
+                        content="Please specify which opportunity to dismiss.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Use the opportunity ID from the suggestion list."]
+                    )
+                
+                success = await proactive_assistant.dismiss_opportunity(request.user_id, opportunity_id)
+                
+                if success:
+                    return AssistantResponse(
+                        content="Suggestion dismissed. I'll learn from this preference.",
+                        success=True,
+                        metadata={"dismissed": True},
+                        suggestions=["Ask for new opportunities"]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="Could not find that suggestion to dismiss.",
+                        success=False,
+                        metadata={"dismissed": False},
+                        suggestions=["Check the suggestion ID and try again."]
+                    )
+            
+            elif action == 'get_statistics':
+                # Get proactive assistance statistics
+                stats = proactive_assistant.get_opportunity_statistics(request.user_id)
+                
+                if not stats or stats.get("total_opportunities", 0) == 0:
+                    return AssistantResponse(
+                        content="No proactive assistance statistics available yet. I'll start tracking as I make suggestions!",
+                        success=True,
+                        metadata={"stats": stats},
+                        suggestions=["Ask me to look for opportunities to get started."]
+                    )
+                
+                content = f"""**Proactive Assistance Statistics:**
+
+📊 **Overall Activity:**
+• Total suggestions made: {stats['total_opportunities']}
+• Suggestions you responded to: {stats['responded_opportunities']}
+• Actions you took: {stats['actions_taken']}
+• Response rate: {stats['response_rate']:.1%}
+• Action rate: {stats['action_rate']:.1%}
+
+🎯 **Suggestion Types:**"""
+                
+                for opp_type, count in stats.get('opportunity_types', {}).items():
+                    response_rate = stats.get('type_response_rates', {}).get(opp_type, 0)
+                    content += f"\n• {opp_type.replace('_', ' ').title()}: {count} suggestions ({response_rate:.1%} response rate)"
+                
+                return AssistantResponse(
+                    content=content,
+                    success=True,
+                    metadata={"statistics": stats},
+                    suggestions=["Ask for new opportunities", "See what types of suggestions work best for you"]
+                )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown proactive assistance action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=[
+                        "Available actions: identify_opportunities, get_active_opportunities, respond_to_opportunity, dismiss_opportunity, get_statistics"
+                    ]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling proactive assistance request: {e}")
+            return AssistantResponse(
+                content=f"Proactive assistance error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Try the proactive assistance request again."]
+            )
+    
     def _map_request_to_interaction_type(self, request_type: RequestType) -> InteractionType:
         """Map request type to interaction type"""
         mapping = {
@@ -1512,6 +1726,7 @@ class PersonalAssistantCore:
             RequestType.MODE_SWITCH: InteractionType.COMMAND,
             RequestType.ACCESSIBILITY_REQUEST: InteractionType.COMMAND,
             RequestType.INTEGRATION_REQUEST: InteractionType.COMMAND,
+            RequestType.PROACTIVE_ASSISTANCE: InteractionType.COMMAND,
         }
         return mapping.get(request_type, InteractionType.QUERY)
     
