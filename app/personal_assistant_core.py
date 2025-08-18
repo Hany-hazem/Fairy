@@ -19,6 +19,11 @@ from .personal_assistant_models import (
 from .user_context_manager import UserContextManager
 from .privacy_security_manager import PrivacySecurityManager, DataCategory, ConsentStatus
 from .personal_database import PersonalDatabase
+from .file_system_manager import FileSystemManager, FileOperation, FileAccessRequest
+from .screen_monitor import ScreenMonitor, MonitoringMode, ScreenContext
+from .learning_engine import LearningEngine, BehaviorPattern, UserFeedback
+from .task_manager import TaskManager, Task, Project, TaskPriority, TaskStatus
+from .personal_knowledge_base import PersonalKnowledgeBase, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +36,10 @@ class RequestType(Enum):
     CONTEXT_UPDATE = "context_update"
     PERMISSION_REQUEST = "permission_request"
     PRIVACY_CONTROL = "privacy_control"
+    SCREEN_MONITORING = "screen_monitoring"
+    TASK_MANAGEMENT = "task_management"
+    KNOWLEDGE_SEARCH = "knowledge_search"
+    LEARNING_FEEDBACK = "learning_feedback"
 
 
 @dataclass
@@ -88,10 +97,66 @@ class PersonalAssistantCore:
         self.context_manager = UserContextManager(db_path)
         self.privacy_manager = PrivacySecurityManager(db_path)
         
-        # Initialize capability modules (placeholders for now)
+        # Initialize capability modules
         self._capability_modules = {}
+        self._initialize_capability_modules()
         
-        logger.info("Personal Assistant Core initialized")
+        logger.info("Personal Assistant Core initialized with all capability modules")
+    
+    def _initialize_capability_modules(self):
+        """Initialize all capability modules"""
+        try:
+            # Initialize File System Manager
+            self._capability_modules['file_system'] = FileSystemManager(
+                privacy_manager=self.privacy_manager,
+                context_manager=self.context_manager
+            )
+            logger.info("FileSystemManager initialized")
+            
+            # Initialize Learning Engine
+            self._capability_modules['learning'] = LearningEngine(
+                db_path=self.db.db_path,
+                context_manager=self.context_manager
+            )
+            logger.info("LearningEngine initialized")
+            
+            # Initialize Task Manager
+            self._capability_modules['task_manager'] = TaskManager(
+                db_path=self.db.db_path
+            )
+            logger.info("TaskManager initialized")
+            
+            # Screen Monitor and Knowledge Base will be initialized per-user
+            # as they require user-specific configuration
+            
+        except Exception as e:
+            logger.error(f"Error initializing capability modules: {e}")
+            # Continue with limited functionality
+    
+    async def _get_or_create_user_modules(self, user_id: str) -> Dict[str, Any]:
+        """Get or create user-specific modules"""
+        user_key = f"user_{user_id}"
+        
+        if user_key not in self._capability_modules:
+            self._capability_modules[user_key] = {}
+            
+            try:
+                # Initialize Screen Monitor for user
+                self._capability_modules[user_key]['screen_monitor'] = ScreenMonitor(
+                    privacy_manager=self.privacy_manager
+                )
+                
+                # Initialize Personal Knowledge Base for user
+                self._capability_modules[user_key]['knowledge_base'] = PersonalKnowledgeBase(
+                    user_id=user_id
+                )
+                
+                logger.info(f"User-specific modules initialized for user {user_id}")
+                
+            except Exception as e:
+                logger.error(f"Error initializing user modules for {user_id}: {e}")
+        
+        return self._capability_modules.get(user_key, {})
     
     async def process_request(self, request: AssistantRequest) -> AssistantResponse:
         """
@@ -279,6 +344,10 @@ class PersonalAssistantCore:
         permission_map = {
             RequestType.FILE_OPERATION: PermissionType.FILE_READ,
             RequestType.CONTEXT_UPDATE: PermissionType.PERSONAL_DATA,
+            RequestType.SCREEN_MONITORING: PermissionType.SCREEN_MONITOR,
+            RequestType.TASK_MANAGEMENT: PermissionType.PERSONAL_DATA,
+            RequestType.KNOWLEDGE_SEARCH: PermissionType.PERSONAL_DATA,
+            RequestType.LEARNING_FEEDBACK: PermissionType.LEARNING,
         }
         return permission_map.get(request_type)
     
@@ -296,6 +365,14 @@ class PersonalAssistantCore:
             return await self._handle_permission_request(request, context)
         elif request.request_type == RequestType.PRIVACY_CONTROL:
             return await self._handle_privacy_control(request, context)
+        elif request.request_type == RequestType.SCREEN_MONITORING:
+            return await self._handle_screen_monitoring(request, context)
+        elif request.request_type == RequestType.TASK_MANAGEMENT:
+            return await self._handle_task_management(request, context)
+        elif request.request_type == RequestType.KNOWLEDGE_SEARCH:
+            return await self._handle_knowledge_search(request, context)
+        elif request.request_type == RequestType.LEARNING_FEEDBACK:
+            return await self._handle_learning_feedback(request, context)
         else:
             return AssistantResponse(
                 content="I don't understand that type of request.",
@@ -305,14 +382,74 @@ class PersonalAssistantCore:
             )
     
     async def _handle_query(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
-        """Handle general queries"""
-        # This is a placeholder - would integrate with actual query processing
-        return AssistantResponse(
-            content=f"I understand you're asking: {request.content}. This is a placeholder response.",
-            success=True,
-            metadata={"query_type": "general"},
-            suggestions=["Would you like me to help with something specific?"]
-        )
+        """Handle general queries with knowledge base integration"""
+        try:
+            # Try to get relevant knowledge from user's knowledge base
+            user_modules = await self._get_or_create_user_modules(request.user_id)
+            knowledge_base = user_modules.get('knowledge_base')
+            
+            relevant_knowledge = []
+            if knowledge_base:
+                try:
+                    search_results = await knowledge_base.search_knowledge(
+                        request.content, k=3, min_similarity=0.4
+                    )
+                    relevant_knowledge = [
+                        f"From {result.knowledge_item.source_file}: {result.knowledge_item.summary or result.knowledge_item.content[:150]}..."
+                        for result in search_results[:2]
+                    ]
+                except Exception as e:
+                    logger.warning(f"Knowledge search failed: {e}")
+            
+            # Generate response with context
+            response_parts = [f"Regarding your question: {request.content}"]
+            
+            if relevant_knowledge:
+                response_parts.append("\nBased on your documents:")
+                response_parts.extend([f"• {knowledge}" for knowledge in relevant_knowledge])
+                response_parts.append("\nWould you like me to search for more specific information?")
+            else:
+                response_parts.append("\nI don't have specific information about this in your knowledge base.")
+                response_parts.append("Would you like me to help you find relevant documents or information?")
+            
+            # Get learning insights for personalized response
+            learning_engine = self._capability_modules.get('learning')
+            if learning_engine:
+                try:
+                    patterns = await learning_engine.get_user_behavior_patterns(request.user_id)
+                    # Use patterns to personalize response (simplified)
+                    if patterns:
+                        response_parts.append(f"\nBased on your preferences, I can also help with related tasks.")
+                except Exception as e:
+                    logger.warning(f"Learning pattern retrieval failed: {e}")
+            
+            suggestions = []
+            if relevant_knowledge:
+                suggestions.append("Show me more details from these documents")
+                suggestions.append("Search for related information")
+            else:
+                suggestions.append("Help me find relevant documents")
+                suggestions.append("Add this topic to my knowledge base")
+            
+            return AssistantResponse(
+                content="\n".join(response_parts),
+                success=True,
+                metadata={
+                    "query_type": "knowledge_enhanced",
+                    "knowledge_results": len(relevant_knowledge),
+                    "has_context": len(relevant_knowledge) > 0
+                },
+                suggestions=suggestions
+            )
+            
+        except Exception as e:
+            logger.error(f"Error handling query: {e}")
+            return AssistantResponse(
+                content=f"I understand you're asking: {request.content}. I encountered an issue accessing additional context, but I'm here to help!",
+                success=True,
+                metadata={"query_type": "fallback", "error": str(e)},
+                suggestions=["Would you like me to help with something specific?"]
+            )
     
     async def _handle_command(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
         """Handle commands"""
@@ -325,14 +462,93 @@ class PersonalAssistantCore:
         )
     
     async def _handle_file_operation(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
-        """Handle file operations"""
-        # This is a placeholder - would integrate with file system manager
-        return AssistantResponse(
-            content=f"File operation requested: {request.content}",
-            success=True,
-            metadata={"operation_type": "file"},
-            suggestions=[]
-        )
+        """Handle file operations using FileSystemManager"""
+        try:
+            file_manager = self._capability_modules.get('file_system')
+            if not file_manager:
+                return AssistantResponse(
+                    content="File system manager is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Please try again later."]
+                )
+            
+            # Extract operation details from request
+            operation = FileOperation(request.metadata.get('operation', 'read'))
+            file_path = request.metadata.get('file_path', '')
+            
+            if not file_path:
+                return AssistantResponse(
+                    content="File path is required for file operations.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Please specify a file path."]
+                )
+            
+            # Create file access request
+            access_request = FileAccessRequest(
+                user_id=request.user_id,
+                operation=operation,
+                file_path=file_path,
+                justification=request.content,
+                metadata=request.metadata
+            )
+            
+            # Execute the file operation
+            if operation == FileOperation.READ:
+                result = await file_manager.read_file(access_request)
+            elif operation == FileOperation.WRITE:
+                content = request.metadata.get('content', '')
+                result = await file_manager.write_file(access_request, content)
+            elif operation == FileOperation.LIST:
+                result = await file_manager.list_directory(access_request)
+            elif operation == FileOperation.SEARCH:
+                query = request.metadata.get('query', '')
+                result = await file_manager.search_files(access_request, query)
+            elif operation == FileOperation.ANALYZE:
+                result = await file_manager.analyze_file(access_request)
+            elif operation == FileOperation.ORGANIZE:
+                result = await file_manager.organize_files(access_request)
+            else:
+                return AssistantResponse(
+                    content=f"File operation '{operation.value}' is not supported yet.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try read, write, list, search, analyze, or organize operations."]
+                )
+            
+            if result.success:
+                response_content = f"File operation '{operation.value}' completed successfully."
+                if result.content:
+                    response_content += f"\n\nResult: {result.content[:500]}..."
+                
+                return AssistantResponse(
+                    content=response_content,
+                    success=True,
+                    metadata={
+                        "operation": operation.value,
+                        "file_path": file_path,
+                        "result_metadata": result.metadata
+                    },
+                    suggestions=[]
+                )
+            else:
+                return AssistantResponse(
+                    content=f"File operation failed: {result.error_message}",
+                    success=False,
+                    metadata={"error": result.error_message},
+                    suggestions=["Check file permissions and try again."],
+                    requires_permission=result.permission_required
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling file operation: {e}")
+            return AssistantResponse(
+                content=f"An error occurred during file operation: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Please try again or contact support."]
+            )
     
     async def _handle_context_update(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
         """Handle context updates"""
@@ -379,6 +595,383 @@ class PersonalAssistantCore:
             suggestions=[]
         )
     
+    async def _handle_screen_monitoring(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle screen monitoring requests"""
+        try:
+            user_modules = await self._get_or_create_user_modules(request.user_id)
+            screen_monitor = user_modules.get('screen_monitor')
+            
+            if not screen_monitor:
+                return AssistantResponse(
+                    content="Screen monitoring is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Please check system requirements."]
+                )
+            
+            action = request.metadata.get('action', 'get_context')
+            
+            if action == 'start_monitoring':
+                from app.screen_monitor import MonitorConfig
+                mode = MonitoringMode(request.metadata.get('mode', 'selective'))
+                config = MonitorConfig(mode=mode)
+                success = await screen_monitor.start_monitoring(request.user_id, config)
+                return AssistantResponse(
+                    content=f"Screen monitoring {'started' if success else 'failed to start'}.",
+                    success=success,
+                    metadata={"monitoring_active": success},
+                    suggestions=[]
+                )
+            
+            elif action == 'stop_monitoring':
+                await screen_monitor.stop_monitoring(request.user_id)
+                return AssistantResponse(
+                    content="Screen monitoring stopped.",
+                    success=True,
+                    metadata={"monitoring_active": False},
+                    suggestions=[]
+                )
+            
+            elif action == 'get_context':
+                screen_context = await screen_monitor.get_current_context(request.user_id)
+                if screen_context:
+                    return AssistantResponse(
+                        content=f"Current screen context: {screen_context.context_summary}",
+                        success=True,
+                        metadata={
+                            "active_application": screen_context.active_application,
+                            "window_title": screen_context.window_title,
+                            "application_type": screen_context.application_type.value
+                        },
+                        suggestions=[]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="No screen context available.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Start screen monitoring first."]
+                    )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown screen monitoring action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try 'start_monitoring', 'stop_monitoring', or 'get_context'."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling screen monitoring request: {e}")
+            return AssistantResponse(
+                content=f"Screen monitoring error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Please try again."]
+            )
+    
+    async def _handle_task_management(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle task management requests"""
+        try:
+            task_manager = self._capability_modules.get('task_manager')
+            if not task_manager:
+                return AssistantResponse(
+                    content="Task manager is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Please try again later."]
+                )
+            
+            action = request.metadata.get('action', 'list_tasks')
+            
+            if action == 'create_task':
+                task_data = request.metadata.get('task_data', {})
+                task = Task(
+                    title=task_data.get('title', request.content),
+                    description=task_data.get('description', ''),
+                    priority=TaskPriority(task_data.get('priority', 'medium')),
+                    user_id=request.user_id
+                )
+                
+                created_task = await task_manager.create_task(task)
+                return AssistantResponse(
+                    content=f"Task '{created_task.title}' created successfully.",
+                    success=True,
+                    metadata={"task_id": created_task.id, "task": created_task.to_dict()},
+                    suggestions=["Would you like to set a due date or add more details?"]
+                )
+            
+            elif action == 'list_tasks':
+                status_filter = request.metadata.get('status')
+                tasks = await task_manager.get_user_tasks(
+                    request.user_id, 
+                    status=TaskStatus(status_filter) if status_filter else None
+                )
+                
+                if tasks:
+                    task_list = "\n".join([f"- {task.title} ({task.status.value})" for task in tasks[:10]])
+                    return AssistantResponse(
+                        content=f"Your tasks:\n{task_list}",
+                        success=True,
+                        metadata={"task_count": len(tasks), "tasks": [t.to_dict() for t in tasks[:10]]},
+                        suggestions=["Would you like to see details for any specific task?"]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="You have no tasks.",
+                        success=True,
+                        metadata={"task_count": 0},
+                        suggestions=["Would you like to create a new task?"]
+                    )
+            
+            elif action == 'update_task':
+                task_id = request.metadata.get('task_id')
+                updates = request.metadata.get('updates', {})
+                
+                if not task_id:
+                    return AssistantResponse(
+                        content="Task ID is required for updates.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Please specify which task to update."]
+                    )
+                
+                success = await task_manager.update_task(task_id, updates)
+                return AssistantResponse(
+                    content=f"Task {'updated' if success else 'update failed'}.",
+                    success=success,
+                    metadata={"task_id": task_id},
+                    suggestions=[]
+                )
+            
+            elif action == 'get_suggestions':
+                suggestions = await task_manager.get_productivity_suggestions(request.user_id)
+                if suggestions:
+                    suggestion_text = "\n".join([f"- {s['title']}: {s['description']}" for s in suggestions[:5]])
+                    return AssistantResponse(
+                        content=f"Productivity suggestions:\n{suggestion_text}",
+                        success=True,
+                        metadata={"suggestions": suggestions},
+                        suggestions=[]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="No productivity suggestions at this time.",
+                        success=True,
+                        metadata={},
+                        suggestions=[]
+                    )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown task management action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try 'create_task', 'list_tasks', 'update_task', or 'get_suggestions'."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling task management request: {e}")
+            return AssistantResponse(
+                content=f"Task management error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Please try again."]
+            )
+    
+    async def _handle_knowledge_search(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle knowledge base search requests"""
+        try:
+            user_modules = await self._get_or_create_user_modules(request.user_id)
+            knowledge_base = user_modules.get('knowledge_base')
+            
+            if not knowledge_base:
+                return AssistantResponse(
+                    content="Knowledge base is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Please try again later."]
+                )
+            
+            action = request.metadata.get('action', 'search')
+            
+            if action == 'search':
+                query = request.content
+                k = request.metadata.get('max_results', 5)
+                min_similarity = request.metadata.get('min_similarity', 0.3)
+                
+                results = await knowledge_base.search_knowledge(query, k=k, min_similarity=min_similarity)
+                
+                if results:
+                    response_parts = []
+                    for i, result in enumerate(results[:3], 1):
+                        response_parts.append(
+                            f"{i}. {result.knowledge_item.summary or result.knowledge_item.content[:100]}... "
+                            f"(from {result.knowledge_item.source_file})"
+                        )
+                    
+                    response_content = f"Found {len(results)} relevant items:\n" + "\n".join(response_parts)
+                    
+                    return AssistantResponse(
+                        content=response_content,
+                        success=True,
+                        metadata={
+                            "result_count": len(results),
+                            "results": [
+                                {
+                                    "content": r.knowledge_item.content[:200],
+                                    "source": r.knowledge_item.source_file,
+                                    "similarity": r.similarity_score,
+                                    "topics": r.matched_topics
+                                } for r in results[:5]
+                            ]
+                        },
+                        suggestions=["Would you like more details about any of these items?"]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="No relevant knowledge found for your query.",
+                        success=True,
+                        metadata={"result_count": 0},
+                        suggestions=["Try a different search term or add more documents to your knowledge base."]
+                    )
+            
+            elif action == 'index_document':
+                file_path = request.metadata.get('file_path')
+                content = request.metadata.get('content', '')
+                
+                if not file_path:
+                    return AssistantResponse(
+                        content="File path is required for document indexing.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Please specify a file path."]
+                    )
+                
+                success = await knowledge_base.index_document(file_path, content)
+                return AssistantResponse(
+                    content=f"Document {'indexed' if success else 'indexing failed'}.",
+                    success=success,
+                    metadata={"file_path": file_path},
+                    suggestions=[]
+                )
+            
+            elif action == 'get_statistics':
+                stats = await knowledge_base.get_knowledge_statistics()
+                return AssistantResponse(
+                    content=f"Knowledge base contains {stats.get('total_items', 0)} items across {stats.get('total_topics', 0)} topics.",
+                    success=True,
+                    metadata=stats,
+                    suggestions=[]
+                )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown knowledge base action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try 'search', 'index_document', or 'get_statistics'."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling knowledge search request: {e}")
+            return AssistantResponse(
+                content=f"Knowledge search error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Please try again."]
+            )
+    
+    async def _handle_learning_feedback(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle learning and feedback requests"""
+        try:
+            learning_engine = self._capability_modules.get('learning')
+            if not learning_engine:
+                return AssistantResponse(
+                    content="Learning engine is not available.",
+                    success=False,
+                    metadata={},
+                    suggestions=["Please try again later."]
+                )
+            
+            action = request.metadata.get('action', 'provide_feedback')
+            
+            if action == 'provide_feedback':
+                interaction_id = request.metadata.get('interaction_id')
+                feedback_type = request.metadata.get('feedback_type', 'rating')
+                feedback_value = request.metadata.get('feedback_value')
+                
+                if not interaction_id or feedback_value is None:
+                    return AssistantResponse(
+                        content="Interaction ID and feedback value are required.",
+                        success=False,
+                        metadata={},
+                        suggestions=["Please provide feedback for a specific interaction."]
+                    )
+                
+                feedback = UserFeedback(
+                    feedback_id=f"feedback_{datetime.now().timestamp()}",
+                    user_id=request.user_id,
+                    interaction_id=interaction_id,
+                    feedback_type=feedback_type,
+                    feedback_value=feedback_value,
+                    timestamp=datetime.now(),
+                    context_data=request.metadata
+                )
+                
+                await learning_engine.process_feedback(feedback)
+                return AssistantResponse(
+                    content="Thank you for your feedback! I'll use it to improve my responses.",
+                    success=True,
+                    metadata={"feedback_processed": True},
+                    suggestions=[]
+                )
+            
+            elif action == 'get_patterns':
+                patterns = await learning_engine.get_user_behavior_patterns(request.user_id)
+                if patterns:
+                    pattern_summary = f"I've identified {len(patterns)} behavior patterns to better assist you."
+                    return AssistantResponse(
+                        content=pattern_summary,
+                        success=True,
+                        metadata={"pattern_count": len(patterns)},
+                        suggestions=[]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="I'm still learning your preferences. Keep interacting with me to help me understand you better!",
+                        success=True,
+                        metadata={"pattern_count": 0},
+                        suggestions=[]
+                    )
+            
+            elif action == 'adapt_preferences':
+                preferences = request.metadata.get('preferences', {})
+                success = await learning_engine.update_user_preferences(request.user_id, preferences)
+                return AssistantResponse(
+                    content=f"Preferences {'updated' if success else 'update failed'}.",
+                    success=success,
+                    metadata={"preferences_updated": success},
+                    suggestions=[]
+                )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown learning action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Try 'provide_feedback', 'get_patterns', or 'adapt_preferences'."]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling learning feedback request: {e}")
+            return AssistantResponse(
+                content=f"Learning feedback error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Please try again."]
+            )
+    
     def _map_request_to_interaction_type(self, request_type: RequestType) -> InteractionType:
         """Map request type to interaction type"""
         mapping = {
@@ -388,6 +981,10 @@ class PersonalAssistantCore:
             RequestType.CONTEXT_UPDATE: InteractionType.QUERY,
             RequestType.PERMISSION_REQUEST: InteractionType.QUERY,
             RequestType.PRIVACY_CONTROL: InteractionType.QUERY,
+            RequestType.SCREEN_MONITORING: InteractionType.SCREEN_CONTEXT,
+            RequestType.TASK_MANAGEMENT: InteractionType.COMMAND,
+            RequestType.KNOWLEDGE_SEARCH: InteractionType.QUERY,
+            RequestType.LEARNING_FEEDBACK: InteractionType.FEEDBACK,
         }
         return mapping.get(request_type, InteractionType.QUERY)
     
@@ -410,8 +1007,91 @@ class PersonalAssistantCore:
         # Update context and save
         await self.context_manager.update_user_context(context)
     
+    async def get_capability_status(self, user_id: str) -> Dict[str, Any]:
+        """Get status of all capability modules for a user"""
+        status = {
+            "core_modules": {},
+            "user_modules": {},
+            "permissions": {},
+            "overall_health": "healthy"
+        }
+        
+        try:
+            # Check core modules
+            status["core_modules"]["file_system"] = "available" if self._capability_modules.get('file_system') else "unavailable"
+            status["core_modules"]["learning"] = "available" if self._capability_modules.get('learning') else "unavailable"
+            status["core_modules"]["task_manager"] = "available" if self._capability_modules.get('task_manager') else "unavailable"
+            
+            # Check user-specific modules
+            user_modules = await self._get_or_create_user_modules(user_id)
+            status["user_modules"]["screen_monitor"] = "available" if user_modules.get('screen_monitor') else "unavailable"
+            status["user_modules"]["knowledge_base"] = "available" if user_modules.get('knowledge_base') else "unavailable"
+            
+            # Check permissions
+            for permission in PermissionType:
+                has_permission = await self.privacy_manager.check_permission(user_id, permission)
+                status["permissions"][permission.value] = "granted" if has_permission else "not_granted"
+            
+            # Determine overall health
+            unavailable_count = sum(1 for v in status["core_modules"].values() if v == "unavailable")
+            unavailable_count += sum(1 for v in status["user_modules"].values() if v == "unavailable")
+            
+            if unavailable_count == 0:
+                status["overall_health"] = "healthy"
+            elif unavailable_count <= 2:
+                status["overall_health"] = "degraded"
+            else:
+                status["overall_health"] = "critical"
+                
+        except Exception as e:
+            logger.error(f"Error getting capability status: {e}")
+            status["overall_health"] = "error"
+            status["error"] = str(e)
+        
+        return status
+    
+    async def initialize_user_capabilities(self, user_id: str) -> Dict[str, bool]:
+        """Initialize all capabilities for a new user"""
+        results = {}
+        
+        try:
+            # Initialize user-specific modules
+            user_modules = await self._get_or_create_user_modules(user_id)
+            results["screen_monitor"] = user_modules.get('screen_monitor') is not None
+            results["knowledge_base"] = user_modules.get('knowledge_base') is not None
+            
+            # Initialize user context if not exists
+            context = await self.context_manager.get_user_context(user_id)
+            results["user_context"] = context is not None
+            
+            # Initialize learning model (learning engine initializes automatically)
+            learning_engine = self._capability_modules.get('learning')
+            results["learning_model"] = learning_engine is not None
+            
+            logger.info(f"User capabilities initialized for {user_id}: {results}")
+            
+        except Exception as e:
+            logger.error(f"Error initializing user capabilities for {user_id}: {e}")
+            results["error"] = str(e)
+        
+        return results
+    
     async def shutdown(self):
         """Shutdown the personal assistant core"""
         logger.info("Shutting down Personal Assistant Core")
+        
+        # Shutdown user-specific modules
+        for user_key, user_modules in self._capability_modules.items():
+            if user_key.startswith("user_") and isinstance(user_modules, dict):
+                screen_monitor = user_modules.get('screen_monitor')
+                if screen_monitor:
+                    try:
+                        # Extract user_id from user_key
+                        user_id = user_key.replace("user_", "")
+                        await screen_monitor.stop_monitoring(user_id)
+                    except Exception as e:
+                        logger.error(f"Error stopping screen monitor: {e}")
+        
         # Cleanup resources
         self.db.close()
+        logger.info("Personal Assistant Core shutdown complete")

@@ -46,7 +46,7 @@
   - Commit changes to git: `git add . && git commit -m "Implement TaskManager with intelligent project management" && git push`
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [-] 5. Build Personal Knowledge Base
+- [x] 5. Build Personal Knowledge Base
   - Implement PersonalKnowledgeBase class with vector storage
   - Add document indexing and semantic search capabilities
   - Create knowledge extraction and entity recognition features
@@ -57,7 +57,7 @@
 
 ## Integration and Enhancement Tasks
 
-- [ ] 6. Enhance Personal Assistant Core Integration
+- [-] 6. Enhance Personal Assistant Core Integration
   - Update PersonalAssistantCore to integrate all new capability modules
   - Add proper request routing to FileSystemManager, ScreenMonitor, etc.
   - Implement capability module initialization and lifecycle management

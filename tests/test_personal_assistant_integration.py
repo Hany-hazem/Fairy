@@ -10,7 +10,15 @@ import pytest_asyncio
 import asyncio
 import tempfile
 import os
+import sys
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch, Mock
+
+# Mock the config module to avoid validation errors
+mock_config_module = MagicMock()
+mock_config_module.settings = MagicMock()
+mock_config_module.settings.VECTOR_DB_PATH = "./vector_db"
+sys.modules['app.config'] = mock_config_module
 
 from app.personal_assistant_core import (
     PersonalAssistantCore, AssistantRequest, RequestType
@@ -19,6 +27,9 @@ from app.personal_assistant_models import (
     InteractionType, PermissionType
 )
 from app.privacy_security_manager import DataCategory, ConsentStatus
+from app.file_system_manager import FileOperation
+from app.task_manager import TaskPriority, TaskStatus
+from app.screen_monitor import MonitoringMode
 
 
 class TestPersonalAssistantIntegration:
@@ -510,3 +521,450 @@ class TestPersonalAssistantIntegration:
         final_context = await assistant_system.get_context(user_id)
         assert final_context.user_id == user_id
         assert len(final_context.recent_interactions) >= 5  # At least the 5 requests
+    
+    @pytest.mark.asyncio
+    async def test_capability_module_integration(self, assistant_system):
+        """Test integration of all capability modules"""
+        user_id = "capability_user"
+        
+        # Initialize user capabilities
+        init_results = await assistant_system.initialize_user_capabilities(user_id)
+        assert init_results["user_context"]
+        
+        # Grant necessary permissions
+        await assistant_system.privacy_manager.request_permission(user_id, PermissionType.FILE_READ)
+        
+        # Test file system integration
+        with patch('app.file_system_manager.FileSystemManager.read_file') as mock_read:
+            mock_read.return_value = Mock(
+                success=True,
+                content="Test file content",
+                metadata={"file_size": 100}
+            )
+            
+            file_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.FILE_OPERATION,
+                content="Read my notes",
+                metadata={
+                    "operation": FileOperation.READ.value,
+                    "file_path": "/home/user/notes.txt"
+                }
+            )
+            
+            response = await assistant_system.process_request(file_request)
+            assert response.success
+            assert "File operation 'read' completed successfully" in response.content
+    
+    @pytest.mark.asyncio
+    async def test_task_management_integration(self, assistant_system):
+        """Test task management capability integration"""
+        user_id = "task_user"
+        
+        # Create a task
+        task_request = AssistantRequest(
+            user_id=user_id,
+            request_type=RequestType.TASK_MANAGEMENT,
+            content="Finish project documentation",
+            metadata={
+                "action": "create_task",
+                "task_data": {
+                    "title": "Finish project documentation",
+                    "description": "Complete all project documentation",
+                    "priority": TaskPriority.HIGH.value
+                }
+            }
+        )
+        
+        response = await assistant_system.process_request(task_request)
+        assert response.success
+        assert "Task 'Finish project documentation' created successfully" in response.content
+        assert "task_id" in response.metadata
+        
+        # List tasks
+        list_request = AssistantRequest(
+            user_id=user_id,
+            request_type=RequestType.TASK_MANAGEMENT,
+            content="Show my tasks",
+            metadata={"action": "list_tasks"}
+        )
+        
+        response = await assistant_system.process_request(list_request)
+        assert response.success
+        assert "Your tasks:" in response.content
+        assert response.metadata["task_count"] >= 1
+    
+    @pytest.mark.asyncio
+    async def test_knowledge_base_integration(self, assistant_system):
+        """Test knowledge base capability integration"""
+        user_id = "knowledge_user"
+        
+        # Index a document
+        with patch('app.personal_knowledge_base.PersonalKnowledgeBase.index_document') as mock_index:
+            mock_index.return_value = True
+            
+            index_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.KNOWLEDGE_SEARCH,
+                content="Index my document",
+                metadata={
+                    "action": "index_document",
+                    "file_path": "/home/user/research.pdf",
+                    "content": "This is research about AI and machine learning."
+                }
+            )
+            
+            response = await assistant_system.process_request(index_request)
+            assert response.success
+            assert "Document indexed" in response.content
+        
+        # Search knowledge base
+        with patch('app.personal_knowledge_base.PersonalKnowledgeBase.search_knowledge') as mock_search:
+            from app.personal_knowledge_base import SearchResult, KnowledgeItem
+            
+            mock_item = KnowledgeItem(
+                id="test_item",
+                content="AI and machine learning research content",
+                source_file="/home/user/research.pdf",
+                content_type="text",
+                summary="Research about AI"
+            )
+            
+            mock_search.return_value = [
+                SearchResult(
+                    knowledge_item=mock_item,
+                    similarity_score=0.8,
+                    relevance_context="AI research",
+                    matched_topics=["technology"]
+                )
+            ]
+            
+            search_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.KNOWLEDGE_SEARCH,
+                content="What do I know about AI?",
+                metadata={"action": "search"}
+            )
+            
+            response = await assistant_system.process_request(search_request)
+            assert response.success
+            assert "Found 1 relevant items" in response.content
+            assert response.metadata["result_count"] == 1
+    
+    @pytest.mark.asyncio
+    async def test_screen_monitoring_integration(self, assistant_system):
+        """Test screen monitoring capability integration"""
+        user_id = "screen_user"
+        
+        # Start monitoring
+        with patch('app.screen_monitor.ScreenMonitor.start_monitoring') as mock_start:
+            mock_start.return_value = True
+            
+            start_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.SCREEN_MONITORING,
+                content="Start monitoring my screen",
+                metadata={
+                    "action": "start_monitoring",
+                    "mode": MonitoringMode.SELECTIVE.value
+                }
+            )
+            
+            response = await assistant_system.process_request(start_request)
+            assert response.success
+            assert "Screen monitoring started" in response.content
+        
+        # Get screen context
+        with patch('app.screen_monitor.ScreenMonitor.get_current_context') as mock_context:
+            from app.screen_monitor import ScreenContext, ApplicationType
+            
+            mock_context.return_value = ScreenContext(
+                active_application="vscode",
+                window_title="main.py - Visual Studio Code",
+                visible_text="def main():",
+                ui_elements=[],
+                detected_actions=["coding"],
+                context_summary="User is coding in Python",
+                timestamp=datetime.now(),
+                application_type=ApplicationType.IDE
+            )
+            
+            context_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.SCREEN_MONITORING,
+                content="What am I working on?",
+                metadata={"action": "get_context"}
+            )
+            
+            response = await assistant_system.process_request(context_request)
+            assert response.success
+            assert "Current screen context: User is coding in Python" in response.content
+            assert response.metadata["active_application"] == "vscode"
+    
+    @pytest.mark.asyncio
+    async def test_learning_feedback_integration(self, assistant_system):
+        """Test learning engine capability integration"""
+        user_id = "learning_user"
+        
+        # Provide feedback
+        with patch('app.learning_engine.LearningEngine.process_feedback') as mock_feedback:
+            feedback_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.LEARNING_FEEDBACK,
+                content="This response was helpful",
+                metadata={
+                    "action": "provide_feedback",
+                    "interaction_id": "test_interaction_123",
+                    "feedback_type": "rating",
+                    "feedback_value": 5
+                }
+            )
+            
+            response = await assistant_system.process_request(feedback_request)
+            assert response.success
+            assert "Thank you for your feedback" in response.content
+            mock_feedback.assert_called_once()
+        
+        # Get behavior patterns
+        with patch('app.learning_engine.LearningEngine.get_user_patterns') as mock_patterns:
+            from app.learning_engine import BehaviorPattern
+            
+            mock_patterns.return_value = [
+                BehaviorPattern(
+                    pattern_id="pattern_1",
+                    user_id=user_id,
+                    pattern_type="time_preference",
+                    pattern_data={"preferred_hours": [9, 10, 11]},
+                    confidence=0.8,
+                    frequency=10,
+                    first_detected=datetime.now(),
+                    last_updated=datetime.now()
+                )
+            ]
+            
+            patterns_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.LEARNING_FEEDBACK,
+                content="What patterns have you learned?",
+                metadata={"action": "get_patterns"}
+            )
+            
+            response = await assistant_system.process_request(patterns_request)
+            assert response.success
+            assert "I've identified 1 behavior patterns" in response.content
+    
+    @pytest.mark.asyncio
+    async def test_enhanced_query_with_knowledge(self, assistant_system):
+        """Test enhanced query handling with knowledge base integration"""
+        user_id = "enhanced_query_user"
+        
+        with patch('app.personal_knowledge_base.PersonalKnowledgeBase.search_knowledge') as mock_search:
+            from app.personal_knowledge_base import SearchResult, KnowledgeItem
+            
+            # Mock knowledge search results
+            mock_item = KnowledgeItem(
+                id="test_item",
+                content="Python is a programming language used for web development, data science, and automation.",
+                source_file="/home/user/python_notes.txt",
+                content_type="text",
+                summary="Python programming language overview"
+            )
+            
+            mock_search.return_value = [
+                SearchResult(
+                    knowledge_item=mock_item,
+                    similarity_score=0.9,
+                    relevance_context="Programming language information",
+                    matched_topics=["technology", "programming"]
+                )
+            ]
+            
+            query_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.QUERY,
+                content="Tell me about Python programming",
+                metadata={}
+            )
+            
+            response = await assistant_system.process_request(query_request)
+            assert response.success
+            assert "Based on your documents:" in response.content
+            assert "python_notes.txt" in response.content
+            assert response.metadata["has_context"] is True
+            assert response.metadata["knowledge_results"] == 1
+    
+    @pytest.mark.asyncio
+    async def test_capability_status_check(self, assistant_system):
+        """Test capability status checking"""
+        user_id = "status_user"
+        
+        status = await assistant_system.get_capability_status(user_id)
+        
+        assert "core_modules" in status
+        assert "user_modules" in status
+        assert "permissions" in status
+        assert "overall_health" in status
+        
+        # Check that core modules are reported
+        assert "file_system" in status["core_modules"]
+        assert "learning" in status["core_modules"]
+        assert "task_manager" in status["core_modules"]
+        
+        # Check that user modules are reported
+        assert "screen_monitor" in status["user_modules"]
+        assert "knowledge_base" in status["user_modules"]
+        
+        # Check that permissions are reported
+        for permission in PermissionType:
+            assert permission.value in status["permissions"]
+    
+    @pytest.mark.asyncio
+    async def test_cross_module_workflow(self, assistant_system):
+        """Test workflow that uses multiple capability modules"""
+        user_id = "workflow_user"
+        
+        # Grant necessary permissions first
+        await assistant_system.privacy_manager.request_permission(user_id, PermissionType.PERSONAL_DATA)
+        await assistant_system.privacy_manager.request_permission(user_id, PermissionType.LEARNING)
+        
+        # Step 1: Create a task
+        with patch('app.task_manager.TaskManager.create_task') as mock_create:
+            from app.task_manager import Task
+            
+            mock_task = Task(
+                id="task_123",
+                title="Research AI trends",
+                user_id=user_id
+            )
+            mock_create.return_value = mock_task
+            
+            task_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.TASK_MANAGEMENT,
+                content="Research AI trends",
+                metadata={
+                    "action": "create_task",
+                    "task_data": {"title": "Research AI trends"}
+                }
+            )
+            
+            response = await assistant_system.process_request(task_request)
+            assert response.success
+        
+        # Step 2: Index related documents
+        with patch('app.personal_knowledge_base.PersonalKnowledgeBase.index_document') as mock_index:
+            mock_index.return_value = True
+            
+            index_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.KNOWLEDGE_SEARCH,
+                content="Index AI research document",
+                metadata={
+                    "action": "index_document",
+                    "file_path": "/home/user/ai_research.pdf",
+                    "content": "Latest trends in artificial intelligence and machine learning."
+                }
+            )
+            
+            response = await assistant_system.process_request(index_request)
+            assert response.success
+        
+        # Step 3: Query for information using knowledge base
+        with patch('app.personal_knowledge_base.PersonalKnowledgeBase.search_knowledge') as mock_search:
+            from app.personal_knowledge_base import SearchResult, KnowledgeItem
+            
+            mock_item = KnowledgeItem(
+                id="ai_item",
+                content="Latest trends in artificial intelligence include deep learning, natural language processing, and computer vision.",
+                source_file="/home/user/ai_research.pdf",
+                content_type="text",
+                summary="AI trends overview"
+            )
+            
+            mock_search.return_value = [
+                SearchResult(
+                    knowledge_item=mock_item,
+                    similarity_score=0.95,
+                    relevance_context="AI trends research",
+                    matched_topics=["technology", "ai"]
+                )
+            ]
+            
+            query_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.QUERY,
+                content="What are the latest AI trends?",
+                metadata={}
+            )
+            
+            response = await assistant_system.process_request(query_request)
+            assert response.success
+            assert "Based on your documents:" in response.content
+            assert "ai_research.pdf" in response.content
+        
+        # Step 4: Provide feedback on the response
+        with patch('app.learning_engine.LearningEngine.process_feedback') as mock_feedback:
+            feedback_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.LEARNING_FEEDBACK,
+                content="Great response!",
+                metadata={
+                    "action": "provide_feedback",
+                    "interaction_id": "query_interaction",
+                    "feedback_type": "rating",
+                    "feedback_value": 5
+                }
+            )
+            
+            response = await assistant_system.process_request(feedback_request)
+            assert response.success
+            mock_feedback.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_error_handling_across_modules(self, assistant_system):
+        """Test error handling when capability modules fail"""
+        user_id = "error_user"
+        
+        # Test file operation with module failure
+        with patch('app.file_system_manager.FileSystemManager.read_file', side_effect=Exception("File system error")):
+            file_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.FILE_OPERATION,
+                content="Read file",
+                metadata={
+                    "operation": FileOperation.READ.value,
+                    "file_path": "/test/file.txt"
+                }
+            )
+            
+            response = await assistant_system.process_request(file_request)
+            assert not response.success
+            assert "error occurred during file operation" in response.content
+        
+        # Test knowledge search with module failure
+        with patch('app.personal_knowledge_base.PersonalKnowledgeBase.search_knowledge', side_effect=Exception("Search error")):
+            search_request = AssistantRequest(
+                user_id=user_id,
+                request_type=RequestType.KNOWLEDGE_SEARCH,
+                content="Search for information",
+                metadata={"action": "search"}
+            )
+            
+            response = await assistant_system.process_request(search_request)
+            assert not response.success
+            assert "Knowledge search error" in response.content
+        
+        # Test that core system remains stable despite module failures
+        basic_request = AssistantRequest(
+            user_id=user_id,
+            request_type=RequestType.QUERY,
+            content="Hello",
+            metadata={}
+        )
+        
+        response = await assistant_system.process_request(basic_request)
+        assert response.success  # Core functionality should still work
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
