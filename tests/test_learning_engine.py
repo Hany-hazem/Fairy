@@ -679,3 +679,668 @@ class TestLearningEngine:
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+class TestContinuousLearning:
+    """Test cases for continuous learning functionality"""
+    
+    @pytest_asyncio.fixture
+    async def temp_db(self):
+        """Create a temporary database for testing"""
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        db_path = temp_file.name
+        temp_file.close()
+        
+        try:
+            yield db_path
+        finally:
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+    
+    @pytest_asyncio.fixture
+    async def continuous_learning_engine(self, temp_db):
+        """Create a LearningEngine with continuous learning enabled"""
+        context_manager = Mock(spec=UserContextManager)
+        engine = LearningEngine(db_path=temp_db, context_manager=context_manager)
+        engine.continuous_learning_enabled = True
+        return engine
+    
+    @pytest.mark.asyncio
+    async def test_enable_continuous_learning(self, continuous_learning_engine):
+        """Test enabling continuous learning"""
+        user_id = "test_user"
+        
+        # Mock the log learning event method
+        continuous_learning_engine._log_learning_event = AsyncMock()
+        
+        await continuous_learning_engine.enable_continuous_learning(user_id)
+        
+        # Verify continuous learning is enabled
+        assert continuous_learning_engine.continuous_learning_enabled is True
+        
+        # Verify learning event was logged
+        continuous_learning_engine._log_learning_event.assert_called_once()
+        
+        # Check database state
+        import sqlite3
+        with sqlite3.connect(continuous_learning_engine.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT user_id, optimization_count FROM continuous_learning_state 
+                WHERE user_id = ?
+            """, (user_id,))
+            row = cursor.fetchone()
+            
+            assert row is not None
+            assert row[0] == user_id
+            assert row[1] == 0  # Initial optimization count
+    
+    @pytest.mark.asyncio
+    async def test_disable_continuous_learning(self, continuous_learning_engine):
+        """Test disabling continuous learning"""
+        user_id = "test_user"
+        
+        # Mock the log learning event method
+        continuous_learning_engine._log_learning_event = AsyncMock()
+        
+        await continuous_learning_engine.disable_continuous_learning(user_id)
+        
+        # Verify continuous learning is disabled
+        assert continuous_learning_engine.continuous_learning_enabled is False
+        
+        # Verify learning event was logged
+        continuous_learning_engine._log_learning_event.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_track_performance_metric(self, continuous_learning_engine):
+        """Test tracking performance metrics"""
+        user_id = "test_user"
+        metric_name = "response_time"
+        metric_value = 1.5
+        context_data = {"interaction_type": "query"}
+        
+        # Mock methods
+        continuous_learning_engine._get_user_model = AsyncMock(return_value=LearningModel(
+            user_id=user_id,
+            model_version=1,
+            behavior_patterns={},
+            preference_weights={},
+            adaptation_history=[],
+            performance_metrics={},
+            last_updated=datetime.now()
+        ))
+        continuous_learning_engine._check_optimization_trigger = AsyncMock()
+        
+        await continuous_learning_engine.track_performance_metric(
+            user_id, metric_name, metric_value, context_data
+        )
+        
+        # Verify metric was stored in database
+        import sqlite3
+        with sqlite3.connect(continuous_learning_engine.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT metric_name, metric_value, context_data FROM performance_metrics 
+                WHERE user_id = ?
+            """, (user_id,))
+            row = cursor.fetchone()
+            
+            assert row is not None
+            assert row[0] == metric_name
+            assert row[1] == metric_value
+            assert json.loads(row[2]) == context_data
+        
+        # Verify optimization trigger was checked
+        continuous_learning_engine._check_optimization_trigger.assert_called_once_with(
+            user_id, metric_name, metric_value
+        )
+    
+    @pytest.mark.asyncio
+    async def test_get_performance_trends(self, continuous_learning_engine, temp_db):
+        """Test getting performance trends"""
+        user_id = "test_user"
+        metric_name = "feedback_score"
+        
+        # Insert test performance metrics
+        import sqlite3
+        with sqlite3.connect(temp_db) as conn:
+            # Insert metrics with improving trend - need more data points
+            base_time = datetime.now() - timedelta(days=20)
+            for i in range(20):  # More data points
+                timestamp = base_time + timedelta(days=i)
+                metric_value = 3.0 + (i * 0.1)  # Improving from 3.0 to 5.0
+                conn.execute("""
+                    INSERT INTO performance_metrics 
+                    (user_id, metric_name, metric_value, timestamp, model_version)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user_id, metric_name, metric_value, timestamp.isoformat(), 1))
+            conn.commit()
+        
+        trends = await continuous_learning_engine.get_performance_trends(user_id, metric_name)
+        
+        assert metric_name in trends
+        trend_data = trends[metric_name]
+        assert trend_data["direction"] == "improving"
+        assert trend_data["magnitude"] > 0
+        assert trend_data["total_points"] == 20
+        assert trend_data["latest_value"] == 4.9
+    
+    @pytest.mark.asyncio
+    async def test_optimize_learning_parameters(self, continuous_learning_engine):
+        """Test optimizing learning parameters"""
+        user_id = "test_user"
+        
+        # Mock methods
+        continuous_learning_engine._get_user_model = AsyncMock(return_value=LearningModel(
+            user_id=user_id,
+            model_version=1,
+            behavior_patterns={},  # Few patterns to trigger optimization
+            preference_weights={},
+            adaptation_history=[],
+            performance_metrics={},
+            last_updated=datetime.now()
+        ))
+        
+        continuous_learning_engine.get_performance_trends = AsyncMock(return_value={
+            "avg_feedback_score": {
+                "direction": "declining",
+                "magnitude": 0.15,  # Above improvement threshold
+                "recent_average": 3.2
+            }
+        })
+        
+        continuous_learning_engine._update_continuous_learning_state = AsyncMock()
+        continuous_learning_engine._log_learning_event = AsyncMock()
+        
+        # Store initial learning rate
+        initial_learning_rate = continuous_learning_engine.adaptation_learning_rate
+        initial_confidence_threshold = continuous_learning_engine.pattern_confidence_threshold
+        
+        results = await continuous_learning_engine.optimize_learning_parameters(user_id)
+        
+        # Verify optimizations were applied
+        assert "optimizations_applied" in results
+        assert len(results["optimizations_applied"]) > 0
+        
+        # Verify learning rate was increased due to declining feedback
+        assert continuous_learning_engine.adaptation_learning_rate > initial_learning_rate
+        
+        # Verify confidence threshold was lowered due to few patterns
+        assert continuous_learning_engine.pattern_confidence_threshold < initial_confidence_threshold
+        
+        # Verify state was updated
+        continuous_learning_engine._update_continuous_learning_state.assert_called_once()
+        continuous_learning_engine._log_learning_event.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_suggest_feature_improvements(self, continuous_learning_engine):
+        """Test suggesting feature improvements"""
+        user_id = "test_user"
+        
+        # Create patterns that should trigger feature suggestions
+        automation_pattern = BehaviorPattern(
+            pattern_id="automation_pattern",
+            user_id=user_id,
+            pattern_type="content_preference",
+            pattern_data={"common_keywords": ["automation", "workflow", "automate"]},
+            confidence=0.9,
+            frequency=15,
+            first_detected=datetime.now(),
+            last_updated=datetime.now()
+        )
+        
+        integration_pattern = BehaviorPattern(
+            pattern_id="integration_pattern",
+            user_id=user_id,
+            pattern_type="content_preference",
+            pattern_data={"common_keywords": ["integration", "connect", "api"]},
+            confidence=0.8,
+            frequency=12,
+            first_detected=datetime.now(),
+            last_updated=datetime.now()
+        )
+        
+        # Mock methods
+        continuous_learning_engine._get_user_model = AsyncMock(return_value=LearningModel(
+            user_id=user_id,
+            model_version=1,
+            behavior_patterns={},
+            preference_weights={},
+            adaptation_history=[],
+            performance_metrics={},
+            last_updated=datetime.now()
+        ))
+        
+        continuous_learning_engine.get_user_behavior_patterns = AsyncMock(return_value=[
+            automation_pattern, integration_pattern
+        ])
+        
+        continuous_learning_engine.get_performance_trends = AsyncMock(return_value={
+            "response_time": {
+                "direction": "declining",
+                "magnitude": 0.25
+            }
+        })
+        
+        continuous_learning_engine._store_feature_suggestion = AsyncMock()
+        
+        suggestions = await continuous_learning_engine.suggest_feature_improvements(user_id)
+        
+        # Verify suggestions were generated
+        assert len(suggestions) >= 2  # At least automation and performance suggestions
+        
+        # Check for automation suggestion
+        automation_suggestions = [s for s in suggestions if "automation" in s["suggestion"].lower()]
+        assert len(automation_suggestions) > 0
+        assert automation_suggestions[0]["confidence"] >= continuous_learning_engine.feature_suggestion_confidence
+        
+        # Check for performance suggestion
+        performance_suggestions = [s for s in suggestions if "performance" in s["suggestion"].lower()]
+        assert len(performance_suggestions) > 0
+        
+        # Verify suggestions were stored
+        assert continuous_learning_engine._store_feature_suggestion.call_count >= len(suggestions)
+    
+    @pytest.mark.asyncio
+    async def test_adapt_to_changing_patterns(self, continuous_learning_engine):
+        """Test adapting to changing user patterns"""
+        user_id = "test_user"
+        
+        # Create existing pattern
+        existing_pattern = BehaviorPattern(
+            pattern_id="existing_pattern",
+            user_id=user_id,
+            pattern_type="time_preference",
+            pattern_data={"hour": 9},
+            confidence=0.7,
+            frequency=10,
+            first_detected=datetime.now() - timedelta(days=30),
+            last_updated=datetime.now() - timedelta(days=15)
+        )
+        
+        model = LearningModel(
+            user_id=user_id,
+            model_version=1,
+            behavior_patterns={"existing_pattern": existing_pattern},
+            preference_weights={},
+            adaptation_history=[],
+            performance_metrics={},
+            last_updated=datetime.now()
+        )
+        
+        # Mock methods
+        continuous_learning_engine._get_user_model = AsyncMock(return_value=model)
+        continuous_learning_engine.get_user_behavior_patterns = AsyncMock(return_value=[existing_pattern])
+        continuous_learning_engine._get_recent_interactions = AsyncMock(return_value=[
+            # Mock recent interactions
+            Interaction(
+                id=f"interaction_{i}",
+                user_id=user_id,
+                interaction_type=InteractionType.QUERY,
+                content=f"Test query {i}",
+                response=f"Test response {i}",
+                timestamp=datetime.now() - timedelta(days=i),
+                context_data={},
+                feedback_score=4.0
+            ) for i in range(10)
+        ])
+        continuous_learning_engine._analyze_interaction_patterns = AsyncMock(return_value=[])
+        continuous_learning_engine._get_recent_feedback = AsyncMock(return_value=[])
+        continuous_learning_engine._save_user_model = AsyncMock()
+        continuous_learning_engine._log_learning_event = AsyncMock()
+        
+        results = await continuous_learning_engine.adapt_to_changing_patterns(user_id)
+        
+        # Verify adaptation results
+        assert "patterns_updated" in results
+        assert "patterns_deprecated" in results
+        assert "new_patterns_detected" in results
+        assert "preference_adjustments" in results
+        assert "timestamp" in results
+        
+        # Verify model was saved
+        continuous_learning_engine._save_user_model.assert_called_once()
+        continuous_learning_engine._log_learning_event.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_get_learning_insights(self, continuous_learning_engine):
+        """Test getting learning insights"""
+        user_id = "test_user"
+        
+        # Create test data
+        pattern = BehaviorPattern(
+            pattern_id="test_pattern",
+            user_id=user_id,
+            pattern_type="content_preference",
+            pattern_data={"keywords": ["python", "programming"]},
+            confidence=0.8,
+            frequency=15,
+            first_detected=datetime.now(),
+            last_updated=datetime.now()
+        )
+        
+        model = LearningModel(
+            user_id=user_id,
+            model_version=3,
+            behavior_patterns={"test_pattern": pattern},
+            preference_weights={"test_pref": 0.7},
+            adaptation_history=[
+                {"timestamp": datetime.now().isoformat(), "type": "feedback"},
+                {"timestamp": datetime.now().isoformat(), "type": "pattern_update"}
+            ],
+            performance_metrics={"avg_feedback_score": 4.2, "total_interactions": 50},
+            last_updated=datetime.now()
+        )
+        
+        # Mock methods
+        continuous_learning_engine._get_user_model = AsyncMock(return_value=model)
+        continuous_learning_engine.get_user_behavior_patterns = AsyncMock(return_value=[pattern])
+        continuous_learning_engine.get_performance_trends = AsyncMock(return_value={
+            "feedback_score": {
+                "direction": "improving",
+                "magnitude": 0.1,
+                "recent_average": 4.2
+            }
+        })
+        
+        insights = await continuous_learning_engine.get_learning_insights(user_id)
+        
+        # Verify insights structure
+        assert "model_info" in insights
+        assert "pattern_analysis" in insights
+        assert "performance_summary" in insights
+        assert "learning_effectiveness" in insights
+        
+        # Verify model info
+        model_info = insights["model_info"]
+        assert model_info["version"] == 3
+        assert model_info["total_patterns"] == 1
+        assert model_info["adaptation_events"] == 2
+        
+        # Verify pattern analysis
+        pattern_analysis = insights["pattern_analysis"]
+        assert pattern_analysis["average_confidence"] == 0.8
+        assert len(pattern_analysis["most_confident_patterns"]) == 1
+        assert pattern_analysis["pattern_types"]["content_preference"] == 1
+        
+        # Verify learning effectiveness metrics
+        effectiveness = insights["learning_effectiveness"]
+        assert "adaptation_rate" in effectiveness
+        assert "pattern_stability" in effectiveness
+        assert "feedback_incorporation" in effectiveness
+
+
+class TestContinuousLearningSimulation:
+    """Long-running simulation tests for continuous learning"""
+    
+    @pytest_asyncio.fixture
+    async def temp_db(self):
+        """Create a temporary database for testing"""
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        db_path = temp_file.name
+        temp_file.close()
+        
+        try:
+            yield db_path
+        finally:
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+    
+    @pytest_asyncio.fixture
+    async def simulation_engine(self, temp_db):
+        """Create a LearningEngine for simulation testing"""
+        context_manager = Mock(spec=UserContextManager)
+        engine = LearningEngine(db_path=temp_db, context_manager=context_manager)
+        engine.continuous_learning_enabled = True
+        return engine
+    
+    @pytest.mark.asyncio
+    async def test_long_term_learning_simulation(self, simulation_engine):
+        """Test long-term learning behavior with simulated interactions"""
+        user_id = "simulation_user"
+        
+        # Enable continuous learning
+        await simulation_engine.enable_continuous_learning(user_id)
+        
+        # Simulate 100 interactions over time
+        interaction_types = [InteractionType.QUERY, InteractionType.COMMAND, InteractionType.FEEDBACK]
+        content_themes = ["python programming", "web development", "data analysis", "automation", "testing"]
+        
+        initial_model = await simulation_engine._get_user_model(user_id)
+        initial_patterns = len(initial_model.behavior_patterns)
+        
+        for i in range(100):
+            # Create varied interactions
+            interaction_type = interaction_types[i % len(interaction_types)]
+            theme = content_themes[i % len(content_themes)]
+            
+            interaction = Interaction(
+                id=f"sim_interaction_{i}",
+                user_id=user_id,
+                interaction_type=interaction_type,
+                content=f"{theme} question {i}",
+                response=f"Response about {theme} {i}",
+                timestamp=datetime.now() - timedelta(hours=100-i),  # Spread over time
+                context_data={"theme": theme, "session": i // 10},
+                feedback_score=3.5 + (i % 3) * 0.5  # Varying feedback scores
+            )
+            
+            # Learn from interaction
+            await simulation_engine.learn_from_interaction(interaction)
+            
+            # Occasionally provide feedback
+            if i % 10 == 0:
+                feedback = UserFeedback(
+                    feedback_id=f"sim_feedback_{i}",
+                    user_id=user_id,
+                    interaction_id=interaction.id,
+                    feedback_type="rating",
+                    feedback_value=4.0 + (i % 2) * 0.5,
+                    timestamp=interaction.timestamp,
+                    context_data={"theme": theme}
+                )
+                await simulation_engine.process_feedback(feedback)
+            
+            # Track performance metrics
+            if i % 5 == 0:
+                await simulation_engine.track_performance_metric(
+                    user_id, "response_quality", 3.5 + (i / 100.0), {"interaction_count": i}
+                )
+        
+        # Analyze results after simulation
+        final_model = await simulation_engine._get_user_model(user_id)
+        final_patterns = await simulation_engine.get_user_behavior_patterns(user_id)
+        trends = await simulation_engine.get_performance_trends(user_id)
+        insights = await simulation_engine.get_learning_insights(user_id)
+        
+        # Verify learning occurred
+        assert len(final_patterns) > initial_patterns, "Should have detected new patterns"
+        assert final_model.model_version > initial_model.model_version, "Model should have been updated"
+        assert len(final_model.adaptation_history) > 0, "Should have adaptation history"
+        
+        # Verify performance tracking
+        assert "response_quality" in trends, "Should have performance trends"
+        assert trends["response_quality"]["total_points"] > 0, "Should have tracked metrics"
+        
+        # Verify insights are meaningful
+        assert insights["model_info"]["total_patterns"] > 0, "Should have detected patterns"
+        assert insights["learning_effectiveness"]["adaptation_rate"] > 0, "Should show adaptation activity"
+        
+        # Test feature suggestions
+        suggestions = await simulation_engine.suggest_feature_improvements(user_id)
+        assert len(suggestions) > 0, "Should generate feature suggestions based on usage patterns"
+        
+        # Test pattern adaptation
+        adaptation_results = await simulation_engine.adapt_to_changing_patterns(user_id)
+        assert "patterns_updated" in adaptation_results, "Should adapt to changing patterns"
+        
+        # Test parameter optimization
+        optimization_results = await simulation_engine.optimize_learning_parameters(user_id)
+        assert "optimizations_applied" in optimization_results, "Should optimize parameters"
+    
+    @pytest.mark.asyncio
+    async def test_feedback_adaptation_simulation(self, simulation_engine):
+        """Test how the system adapts to different types of feedback over time"""
+        user_id = "feedback_user"
+        
+        await simulation_engine.enable_continuous_learning(user_id)
+        
+        # Phase 1: Positive feedback period
+        for i in range(20):
+            interaction = Interaction(
+                id=f"pos_interaction_{i}",
+                user_id=user_id,
+                interaction_type=InteractionType.QUERY,
+                content=f"Positive phase query {i}",
+                response=f"Good response {i}",
+                timestamp=datetime.now() - timedelta(hours=50-i),
+                feedback_score=4.5
+            )
+            await simulation_engine.learn_from_interaction(interaction)
+            
+            feedback = UserFeedback(
+                feedback_id=f"pos_feedback_{i}",
+                user_id=user_id,
+                interaction_id=interaction.id,
+                feedback_type="rating",
+                feedback_value=4.5,
+                timestamp=interaction.timestamp,
+                context_data={"phase": "positive", "interaction_type": "query"}
+            )
+            await simulation_engine.process_feedback(feedback)
+        
+        model_after_positive = await simulation_engine._get_user_model(user_id)
+        positive_weights = model_after_positive.preference_weights.copy()
+        
+        # Phase 2: Negative feedback period
+        for i in range(20):
+            interaction = Interaction(
+                id=f"neg_interaction_{i}",
+                user_id=user_id,
+                interaction_type=InteractionType.QUERY,
+                content=f"Negative phase query {i}",
+                response=f"Poor response {i}",
+                timestamp=datetime.now() - timedelta(hours=25-i),
+                feedback_score=2.0
+            )
+            await simulation_engine.learn_from_interaction(interaction)
+            
+            feedback = UserFeedback(
+                feedback_id=f"neg_feedback_{i}",
+                user_id=user_id,
+                interaction_id=interaction.id,
+                feedback_type="rating",
+                feedback_value=2.0,
+                timestamp=interaction.timestamp,
+                context_data={"phase": "negative", "interaction_type": "query"}
+            )
+            await simulation_engine.process_feedback(feedback)
+        
+        model_after_negative = await simulation_engine._get_user_model(user_id)
+        negative_weights = model_after_negative.preference_weights.copy()
+        
+        # Verify adaptation occurred
+        assert model_after_negative.model_version > model_after_positive.model_version
+        
+        # Check that preference weights changed appropriately
+        query_weight_key = "interaction_type_query"
+        if query_weight_key in positive_weights and query_weight_key in negative_weights:
+            # Weight should have decreased due to negative feedback
+            assert negative_weights[query_weight_key] < positive_weights[query_weight_key]
+        
+        # Test recovery with mixed feedback
+        for i in range(10):
+            interaction = Interaction(
+                id=f"mixed_interaction_{i}",
+                user_id=user_id,
+                interaction_type=InteractionType.QUERY,
+                content=f"Mixed phase query {i}",
+                response=f"Improving response {i}",
+                timestamp=datetime.now() - timedelta(hours=10-i),
+                feedback_score=3.5
+            )
+            await simulation_engine.learn_from_interaction(interaction)
+            
+            feedback = UserFeedback(
+                feedback_id=f"mixed_feedback_{i}",
+                user_id=user_id,
+                interaction_id=interaction.id,
+                feedback_type="rating",
+                feedback_value=3.5,
+                timestamp=interaction.timestamp,
+                context_data={"phase": "recovery", "interaction_type": "query"}
+            )
+            await simulation_engine.process_feedback(feedback)
+        
+        # Verify system adapted to changing feedback patterns
+        final_insights = await simulation_engine.get_learning_insights(user_id)
+        assert final_insights["learning_effectiveness"]["feedback_incorporation"] > 0
+        assert final_insights["model_info"]["adaptation_events"] >= 50  # Should have many adaptations
+    
+    @pytest.mark.asyncio
+    async def test_pattern_evolution_simulation(self, simulation_engine):
+        """Test how patterns evolve and adapt over time"""
+        user_id = "pattern_user"
+        
+        await simulation_engine.enable_continuous_learning(user_id)
+        
+        # Phase 1: Establish morning work pattern
+        morning_hour = 9
+        for i in range(15):
+            interaction = Interaction(
+                id=f"morning_interaction_{i}",
+                user_id=user_id,
+                interaction_type=InteractionType.QUERY,
+                content=f"Morning work query {i}",
+                response=f"Morning response {i}",
+                timestamp=datetime.now().replace(hour=morning_hour) - timedelta(days=i),
+                feedback_score=4.0
+            )
+            await simulation_engine.learn_from_interaction(interaction)
+        
+        # Check that morning pattern was detected
+        morning_patterns = await simulation_engine.get_user_behavior_patterns(user_id)
+        morning_time_patterns = [p for p in morning_patterns if p.pattern_type == "time_preference" and p.pattern_data.get("hour") == morning_hour]
+        assert len(morning_time_patterns) > 0, "Should detect morning work pattern"
+        
+        # Phase 2: Shift to evening work pattern
+        evening_hour = 20
+        for i in range(15):
+            interaction = Interaction(
+                id=f"evening_interaction_{i}",
+                user_id=user_id,
+                interaction_type=InteractionType.QUERY,
+                content=f"Evening work query {i}",
+                response=f"Evening response {i}",
+                timestamp=datetime.now().replace(hour=evening_hour) - timedelta(days=i),
+                feedback_score=4.2
+            )
+            await simulation_engine.learn_from_interaction(interaction)
+        
+        # Trigger pattern adaptation
+        adaptation_results = await simulation_engine.adapt_to_changing_patterns(user_id)
+        
+        # Check that new evening pattern was detected
+        updated_patterns = await simulation_engine.get_user_behavior_patterns(user_id)
+        evening_time_patterns = [p for p in updated_patterns if p.pattern_type == "time_preference" and p.pattern_data.get("hour") == evening_hour]
+        assert len(evening_time_patterns) > 0, "Should detect new evening work pattern"
+        
+        # Verify adaptation occurred
+        assert adaptation_results["new_patterns_detected"] > 0 or adaptation_results["patterns_updated"] > 0
+        
+        # Test that suggestions adapt to new patterns
+        suggestions = await simulation_engine.get_personalized_suggestions(UserContext(
+            user_id=user_id,
+            current_activity="working",
+            active_applications=["editor"],
+            current_files=[],
+            preferences=UserPreferences(user_id=user_id, language="en"),
+            task_context=TaskContext(current_tasks=[], active_projects=[]),
+            knowledge_state=KnowledgeState(expertise_areas={})
+        ))
+        
+        # Should have suggestions based on detected patterns
+        assert len(suggestions) > 0, "Should generate suggestions based on learned patterns"
+
+
+if __name__ == "__main__":
+    # Run all tests including the new continuous learning tests
+    pytest.main([__file__, "-v"])
