@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Self-Improving AI Assistant</title>
+    <title>Personal AI Assistant</title>
     <style>
         * {
             margin: 0;
@@ -13,20 +13,83 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            width: 90%;
-            max-width: 800px;
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        
+        .sidebar h2 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            color: #ecf0f1;
+        }
+        
+        .nav-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-item:hover {
+            background: #34495e;
+        }
+        
+        .nav-item.active {
+            background: #3498db;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
+        }
+        
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e1e5e9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.5rem;
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
         }
         
         .header {
@@ -53,11 +116,218 @@
         .chat-container {
             border: 2px solid #e1e5e9;
             border-radius: 10px;
-            height: 400px;
+            height: 500px;
             overflow-y: auto;
             padding: 1rem;
             margin-bottom: 1rem;
             background: #f8f9fa;
+        }
+        
+        /* File Browser Styles */
+        .file-browser {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .file-browser-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        .file-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .file-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .file-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .file-icon {
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Privacy Dashboard Styles */
+        .privacy-section {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .privacy-section-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-bottom: 1px solid #e1e5e9;
+            font-weight: 600;
+        }
+        
+        .privacy-section-content {
+            padding: 1rem;
+        }
+        
+        .permission-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        
+        .permission-item:last-child {
+            border-bottom: none;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active::after {
+            transform: translateX(26px);
+        }
+        
+        /* Task Management Styles */
+        .task-section {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .task-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .task-item {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f3f4;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .task-checkbox {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .task-content {
+            flex: 1;
+        }
+        
+        .task-title {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        
+        .task-meta {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        
+        /* Knowledge Base Styles */
+        .search-container {
+            margin-bottom: 1rem;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .knowledge-results {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: white;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .knowledge-item {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        
+        .knowledge-item:last-child {
+            border-bottom: none;
+        }
+        
+        .knowledge-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .knowledge-snippet {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .knowledge-meta {
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #999;
         }
         
         .message {
@@ -100,25 +370,52 @@
             border-color: #667eea;
         }
         
-        .send-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .send-button, .btn-primary {
+            background: #3498db;
             color: white;
             border: none;
             padding: 0.75rem 1.5rem;
-            border-radius: 10px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 1rem;
-            transition: transform 0.2s;
+            transition: background-color 0.3s;
         }
         
-        .send-button:hover {
-            transform: translateY(-2px);
+        .send-button:hover, .btn-primary:hover {
+            background: #2980b9;
         }
         
-        .send-button:disabled {
+        .send-button:disabled, .btn-primary:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
         }
         
         .features {
@@ -131,7 +428,7 @@
         .feature-card {
             background: #f8f9fa;
             padding: 1.5rem;
-            border-radius: 10px;
+            border-radius: 8px;
             text-align: center;
             border: 2px solid transparent;
             cursor: pointer;
@@ -139,7 +436,7 @@
         }
         
         .feature-card:hover {
-            border-color: #667eea;
+            border-color: #3498db;
             transform: translateY(-2px);
         }
         
@@ -151,6 +448,51 @@
         .feature-card p {
             color: #666;
             font-size: 0.9rem;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-online {
+            background: #27ae60;
+        }
+        
+        .status-offline {
+            background: #e74c3c;
+        }
+        
+        .status-warning {
+            background: #f39c12;
         }
         
         .status {
@@ -198,60 +540,285 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 Self-Improving AI Assistant</h1>
-            <p>Chat with your AI assistant and improve your code automatically</p>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <h2>🤖 Personal Assistant</h2>
+            <div class="nav-item active" onclick="showTab('chat')">
+                <span>💬</span> Chat
+            </div>
+            <div class="nav-item" onclick="showTab('files')">
+                <span>📁</span> File Manager
+            </div>
+            <div class="nav-item" onclick="showTab('tasks')">
+                <span>✅</span> Tasks
+            </div>
+            <div class="nav-item" onclick="showTab('knowledge')">
+                <span>🧠</span> Knowledge Base
+            </div>
+            <div class="nav-item" onclick="showTab('privacy')">
+                <span>🔒</span> Privacy & Security
+            </div>
         </div>
         
-        <div class="content">
-            <div id="status" class="status">
-                🟢 Connected to AI Assistant
-            </div>
-            
-            <div class="chat-container" id="chatContainer">
-                <div class="message ai-message">
-                    <strong>AI Assistant:</strong> Hello! I'm your self-improving AI assistant. I can help you with code analysis, improvements, and general programming questions. How can I assist you today?
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="header">
+                <h1 id="pageTitle">Chat Assistant</h1>
+                <div id="status" class="status">
+                    <span class="status-indicator status-online"></span>
+                    Connected to AI Assistant
                 </div>
             </div>
             
-            <div class="loading" id="loading">
-                <span class="spinner"></span>
-                Thinking...
-            </div>
-            
-            <div class="input-container">
-                <input 
-                    type="text" 
-                    id="messageInput" 
-                    class="input-field" 
-                    placeholder="Ask me about code improvements, analysis, or programming questions..."
-                    onkeypress="handleKeyPress(event)"
-                >
-                <button onclick="sendMessage()" id="sendButton" class="send-button">
-                    Send
-                </button>
-            </div>
-            
-            <div class="features">
-                <div class="feature-card" onclick="sendPredefinedMessage('Analyze my code for performance issues')">
-                    <h3>🔍 Code Analysis</h3>
-                    <p>Analyze your code for quality and performance issues</p>
+            <div class="content-area">
+                <!-- Chat Tab -->
+                <div id="chat-tab" class="tab-content active">
+                    <div class="chat-container" id="chatContainer">
+                        <div class="message ai-message">
+                            <strong>AI Assistant:</strong> Hello! I'm your personal AI assistant. I can help you with file management, task organization, knowledge search, and much more. How can I assist you today?
+                        </div>
+                    </div>
+                    
+                    <div class="loading" id="loading">
+                        <span class="spinner"></span>
+                        Thinking...
+                    </div>
+                    
+                    <div class="input-container">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            class="input-field" 
+                            placeholder="Ask me anything or request assistance..."
+                            onkeypress="handleKeyPress(event)"
+                        >
+                        <button onclick="sendMessage()" id="sendButton" class="send-button">
+                            Send
+                        </button>
+                    </div>
+                    
+                    <div class="features">
+                        <div class="feature-card" onclick="sendPredefinedMessage('Help me organize my files')">
+                            <h3>📁 File Organization</h3>
+                            <p>Organize and manage your files intelligently</p>
+                        </div>
+                        
+                        <div class="feature-card" onclick="sendPredefinedMessage('What tasks do I have today?')">
+                            <h3>✅ Task Management</h3>
+                            <p>Track and manage your tasks and projects</p>
+                        </div>
+                        
+                        <div class="feature-card" onclick="sendPredefinedMessage('Search my knowledge base')">
+                            <h3>🧠 Knowledge Search</h3>
+                            <p>Find information from your personal knowledge</p>
+                        </div>
+                        
+                        <div class="feature-card" onclick="sendPredefinedMessage('Analyze my screen context')">
+                            <h3>👁️ Context Awareness</h3>
+                            <p>Get contextual assistance based on your activity</p>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="feature-card" onclick="sendPredefinedMessage('Help me improve my Python code')">
-                    <h3>🚀 Code Improvement</h3>
-                    <p>Get suggestions for code improvements and optimizations</p>
+                <!-- File Manager Tab -->
+                <div id="files-tab" class="tab-content">
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3>📁 File Browser</h3>
+                            <div class="file-browser">
+                                <div class="file-browser-header">
+                                    <span>Current Directory: <strong id="currentPath">/home/user</strong></span>
+                                    <button class="btn-secondary" onclick="refreshFiles()">Refresh</button>
+                                </div>
+                                <div class="file-list" id="fileList">
+                                    <div class="file-item" onclick="navigateToFile('..')">
+                                        <span class="file-icon">📁</span>
+                                        <span>..</span>
+                                    </div>
+                                    <div class="file-item" onclick="navigateToFile('Documents')">
+                                        <span class="file-icon">📁</span>
+                                        <span>Documents</span>
+                                    </div>
+                                    <div class="file-item" onclick="navigateToFile('Downloads')">
+                                        <span class="file-icon">📁</span>
+                                        <span>Downloads</span>
+                                    </div>
+                                    <div class="file-item" onclick="navigateToFile('example.txt')">
+                                        <span class="file-icon">📄</span>
+                                        <span>example.txt</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>🔧 File Operations</h3>
+                            <div style="margin-bottom: 1rem;">
+                                <button class="btn-primary" onclick="analyzeFiles()">Analyze Files</button>
+                                <button class="btn-primary" onclick="organizeFiles()">Auto-Organize</button>
+                            </div>
+                            <div id="fileOperationResult" style="padding: 1rem; background: #f8f9fa; border-radius: 4px; display: none;">
+                                <h4>Operation Result:</h4>
+                                <div id="operationDetails"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="feature-card" onclick="sendPredefinedMessage('What are Python best practices?')">
-                    <h3>💡 Best Practices</h3>
-                    <p>Learn about coding best practices and patterns</p>
+                <!-- Tasks Tab -->
+                <div id="tasks-tab" class="tab-content">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="task-header">
+                                <h3>📋 My Tasks</h3>
+                                <button class="btn-primary" onclick="addNewTask()">Add Task</button>
+                            </div>
+                            <div class="task-list" id="taskList">
+                                <div class="task-item">
+                                    <input type="checkbox" class="task-checkbox" onchange="toggleTask(1)">
+                                    <div class="task-content">
+                                        <div class="task-title">Complete project documentation</div>
+                                        <div class="task-meta">Due: Today • Priority: High</div>
+                                    </div>
+                                </div>
+                                <div class="task-item">
+                                    <input type="checkbox" class="task-checkbox" onchange="toggleTask(2)">
+                                    <div class="task-content">
+                                        <div class="task-title">Review code changes</div>
+                                        <div class="task-meta">Due: Tomorrow • Priority: Medium</div>
+                                    </div>
+                                </div>
+                                <div class="task-item">
+                                    <input type="checkbox" class="task-checkbox" checked onchange="toggleTask(3)">
+                                    <div class="task-content">
+                                        <div class="task-title">Setup development environment</div>
+                                        <div class="task-meta">Completed • Priority: High</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>📊 Task Analytics</h3>
+                            <div class="grid-3">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; font-weight: bold; color: #3498db;">5</div>
+                                    <div style="color: #666;">Active Tasks</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; font-weight: bold; color: #27ae60;">12</div>
+                                    <div style="color: #666;">Completed</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; font-weight: bold; color: #e74c3c;">2</div>
+                                    <div style="color: #666;">Overdue</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="btn-secondary" onclick="generateTaskReport()">Generate Report</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="feature-card" onclick="triggerSelfImprovement()">
-                    <h3>🔧 Self-Improve</h3>
-                    <p>Automatically analyze and improve the codebase</p>
+                <!-- Knowledge Base Tab -->
+                <div id="knowledge-tab" class="tab-content">
+                    <div class="card">
+                        <h3>🧠 Knowledge Base Search</h3>
+                        <div class="search-container">
+                            <input 
+                                type="text" 
+                                class="search-input" 
+                                id="knowledgeSearch"
+                                placeholder="Search your personal knowledge base..."
+                                onkeypress="handleKnowledgeSearch(event)"
+                            >
+                        </div>
+                        
+                        <div class="knowledge-results" id="knowledgeResults">
+                            <div class="knowledge-item">
+                                <div class="knowledge-title">Python Best Practices</div>
+                                <div class="knowledge-snippet">
+                                    A comprehensive guide to Python coding standards including PEP 8 compliance, 
+                                    proper error handling, and performance optimization techniques...
+                                </div>
+                                <div class="knowledge-meta">
+                                    Source: development_notes.md • Last updated: 2 days ago
+                                </div>
+                            </div>
+                            <div class="knowledge-item">
+                                <div class="knowledge-title">Project Architecture Overview</div>
+                                <div class="knowledge-snippet">
+                                    The system follows a modular architecture with clear separation of concerns.
+                                    Core components include the assistant engine, capability modules...
+                                </div>
+                                <div class="knowledge-meta">
+                                    Source: architecture_docs.md • Last updated: 1 week ago
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Privacy & Security Tab -->
+                <div id="privacy-tab" class="tab-content">
+                    <div class="privacy-section">
+                        <div class="privacy-section-header">
+                            🔒 Data Access Permissions
+                        </div>
+                        <div class="privacy-section-content">
+                            <div class="permission-item">
+                                <div>
+                                    <strong>File System Access</strong>
+                                    <div style="font-size: 0.9rem; color: #666;">Allow reading and writing files</div>
+                                </div>
+                                <div class="toggle-switch active" onclick="togglePermission(this, 'file_access')"></div>
+                            </div>
+                            <div class="permission-item">
+                                <div>
+                                    <strong>Screen Monitoring</strong>
+                                    <div style="font-size: 0.9rem; color: #666;">Monitor screen content for context</div>
+                                </div>
+                                <div class="toggle-switch" onclick="togglePermission(this, 'screen_monitor')"></div>
+                            </div>
+                            <div class="permission-item">
+                                <div>
+                                    <strong>Learning from Interactions</strong>
+                                    <div style="font-size: 0.9rem; color: #666;">Learn from your behavior patterns</div>
+                                </div>
+                                <div class="toggle-switch active" onclick="togglePermission(this, 'learning')"></div>
+                            </div>
+                            <div class="permission-item">
+                                <div>
+                                    <strong>Cloud Synchronization</strong>
+                                    <div style="font-size: 0.9rem; color: #666;">Sync data across devices</div>
+                                </div>
+                                <div class="toggle-switch" onclick="togglePermission(this, 'cloud_sync')"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="privacy-section">
+                        <div class="privacy-section-header">
+                            🛡️ Security Settings
+                        </div>
+                        <div class="privacy-section-content">
+                            <div style="margin-bottom: 1rem;">
+                                <button class="btn-primary" onclick="exportData()">Export My Data</button>
+                                <button class="btn-danger" onclick="deleteAllData()">Delete All Data</button>
+                            </div>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+                                <h4>Data Usage Summary</h4>
+                                <ul style="margin: 0.5rem 0;">
+                                    <li>Files analyzed: 1,247</li>
+                                    <li>Conversations stored: 89</li>
+                                    <li>Knowledge items: 156</li>
+                                    <li>Last backup: 2 hours ago</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -260,6 +827,48 @@
     <script>
         let sessionId = null;
         const userId = 'web_user_' + Math.random().toString(36).substr(2, 9);
+        let currentTab = 'chat';
+        let currentPath = '/home/user';
+        
+        // Tab Management
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked nav item
+            event.target.classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'chat': 'Chat Assistant',
+                'files': 'File Manager',
+                'tasks': 'Task Management',
+                'knowledge': 'Knowledge Base',
+                'privacy': 'Privacy & Security'
+            };
+            document.getElementById('pageTitle').textContent = titles[tabName];
+            
+            currentTab = tabName;
+            
+            // Load tab-specific data
+            if (tabName === 'files') {
+                loadFileList();
+            } else if (tabName === 'tasks') {
+                loadTasks();
+            } else if (tabName === 'knowledge') {
+                loadKnowledgeBase();
+            }
+        }
         
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
@@ -290,7 +899,7 @@
             sendButton.disabled = true;
             
             try {
-                const response = await fetch('/chat', {
+                const response = await fetch('/personal-assistant/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -298,7 +907,11 @@
                     body: JSON.stringify({
                         message: message,
                         session_id: sessionId,
-                        user_id: userId
+                        user_id: userId,
+                        context: {
+                            current_tab: currentTab,
+                            current_path: currentPath
+                        }
                     })
                 });
                 
@@ -307,14 +920,14 @@
                 if (response.ok) {
                     sessionId = data.session_id;
                     addMessage(data.response, 'ai');
-                    updateStatus('🟢 Connected to AI Assistant', 'status');
+                    updateStatus('Connected to AI Assistant', 'status');
                 } else {
                     addMessage('Sorry, I encountered an error: ' + (data.detail || 'Unknown error'), 'ai');
-                    updateStatus('🔴 Error communicating with AI', 'error');
+                    updateStatus('Error communicating with AI', 'error');
                 }
             } catch (error) {
                 addMessage('Sorry, I could not connect to the AI service. Please check if the server is running.', 'ai');
-                updateStatus('🔴 Connection failed - is the server running?', 'error');
+                updateStatus('Connection failed - is the server running?', 'error');
                 console.error('Error:', error);
             } finally {
                 showLoading(false);
@@ -323,57 +936,320 @@
             }
         }
         
-        async function triggerSelfImprovement() {
-            addMessage('Triggering self-improvement cycle...', 'user');
-            showLoading(true);
+        // File Management Functions
+        async function loadFileList() {
+            try {
+                const response = await fetch(`/personal-assistant/files/list?path=${encodeURIComponent(currentPath)}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayFileList(data.files);
+                    document.getElementById('currentPath').textContent = currentPath;
+                }
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+        
+        function displayFileList(files) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            // Add parent directory if not at root
+            if (currentPath !== '/') {
+                const parentItem = document.createElement('div');
+                parentItem.className = 'file-item';
+                parentItem.onclick = () => navigateToFile('..');
+                parentItem.innerHTML = '<span class="file-icon">📁</span><span>..</span>';
+                fileList.appendChild(parentItem);
+            }
+            
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.onclick = () => navigateToFile(file.name);
+                
+                const icon = file.type === 'directory' ? '📁' : getFileIcon(file.name);
+                fileItem.innerHTML = `<span class="file-icon">${icon}</span><span>${file.name}</span>`;
+                
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'txt': '📄', 'md': '📝', 'py': '🐍', 'js': '📜', 'html': '🌐',
+                'css': '🎨', 'json': '📋', 'pdf': '📕', 'jpg': '🖼️', 'png': '🖼️'
+            };
+            return icons[ext] || '📄';
+        }
+        
+        function navigateToFile(filename) {
+            if (filename === '..') {
+                const pathParts = currentPath.split('/').filter(p => p);
+                pathParts.pop();
+                currentPath = '/' + pathParts.join('/');
+                if (currentPath === '/') currentPath = '/';
+            } else {
+                if (currentPath.endsWith('/')) {
+                    currentPath += filename;
+                } else {
+                    currentPath += '/' + filename;
+                }
+            }
+            loadFileList();
+        }
+        
+        function refreshFiles() {
+            loadFileList();
+        }
+        
+        async function analyzeFiles() {
+            try {
+                const response = await fetch('/personal-assistant/files/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: currentPath })
+                });
+                
+                const data = await response.json();
+                showOperationResult('File Analysis', data.analysis);
+            } catch (error) {
+                console.error('Error analyzing files:', error);
+            }
+        }
+        
+        async function organizeFiles() {
+            try {
+                const response = await fetch('/personal-assistant/files/organize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: currentPath })
+                });
+                
+                const data = await response.json();
+                showOperationResult('File Organization', data.result);
+                loadFileList(); // Refresh the file list
+            } catch (error) {
+                console.error('Error organizing files:', error);
+            }
+        }
+        
+        function showOperationResult(title, details) {
+            const resultDiv = document.getElementById('fileOperationResult');
+            const detailsDiv = document.getElementById('operationDetails');
+            
+            detailsDiv.innerHTML = `<strong>${title}:</strong><br>${details}`;
+            resultDiv.style.display = 'block';
+        }
+        
+        // Task Management Functions
+        async function loadTasks() {
+            try {
+                const response = await fetch('/personal-assistant/tasks/list');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayTasks(data.tasks);
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+        
+        function displayTasks(tasks) {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const taskItem = document.createElement('div');
+                taskItem.className = 'task-item';
+                
+                const checkbox = task.completed ? 'checked' : '';
+                const priority = task.priority || 'Medium';
+                const dueDate = task.due_date || 'No due date';
+                
+                taskItem.innerHTML = `
+                    <input type="checkbox" class="task-checkbox" ${checkbox} onchange="toggleTask('${task.id}')">
+                    <div class="task-content">
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-meta">Due: ${dueDate} • Priority: ${priority}</div>
+                    </div>
+                `;
+                
+                taskList.appendChild(taskItem);
+            });
+        }
+        
+        async function toggleTask(taskId) {
+            try {
+                const response = await fetch(`/personal-assistant/tasks/${taskId}/toggle`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    loadTasks(); // Refresh task list
+                }
+            } catch (error) {
+                console.error('Error toggling task:', error);
+            }
+        }
+        
+        function addNewTask() {
+            const title = prompt('Enter task title:');
+            if (title) {
+                createTask(title);
+            }
+        }
+        
+        async function createTask(title) {
+            try {
+                const response = await fetch('/personal-assistant/tasks/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: title, priority: 'Medium' })
+                });
+                
+                if (response.ok) {
+                    loadTasks(); // Refresh task list
+                }
+            } catch (error) {
+                console.error('Error creating task:', error);
+            }
+        }
+        
+        function generateTaskReport() {
+            alert('Task report generation feature coming soon!');
+        }
+        
+        // Knowledge Base Functions
+        async function loadKnowledgeBase() {
+            try {
+                const response = await fetch('/personal-assistant/knowledge/recent');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayKnowledgeItems(data.items);
+                }
+            } catch (error) {
+                console.error('Error loading knowledge base:', error);
+            }
+        }
+        
+        function handleKnowledgeSearch(event) {
+            if (event.key === 'Enter') {
+                searchKnowledge();
+            }
+        }
+        
+        async function searchKnowledge() {
+            const query = document.getElementById('knowledgeSearch').value.trim();
+            if (!query) return;
             
             try {
-                const response = await fetch('/improve', {
+                const response = await fetch('/personal-assistant/knowledge/search', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        trigger: 'manual'
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    addMessage(`Self-improvement cycle started! Cycle ID: ${data.cycle_id}. This will analyze the codebase and suggest safe improvements.`, 'ai');
-                    
-                    // Poll for status updates
-                    pollImprovementStatus();
-                } else {
-                    addMessage('Failed to start self-improvement: ' + (data.detail || 'Unknown error'), 'ai');
+                    displayKnowledgeItems(data.results);
                 }
             } catch (error) {
-                addMessage('Could not start self-improvement. Please check if the server is running.', 'ai');
-                console.error('Error:', error);
-            } finally {
-                showLoading(false);
+                console.error('Error searching knowledge:', error);
             }
         }
         
-        async function pollImprovementStatus() {
-            try {
-                const response = await fetch('/improve/status');
-                const data = await response.json();
+        function displayKnowledgeItems(items) {
+            const resultsDiv = document.getElementById('knowledgeResults');
+            resultsDiv.innerHTML = '';
+            
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'knowledge-item';
                 
-                if (data.current_cycle) {
-                    const status = data.current_cycle.status;
-                    addMessage(`Improvement status: ${status}`, 'ai');
-                    
-                    if (status !== 'completed' && status !== 'failed' && status !== 'rolled_back') {
-                        // Continue polling
-                        setTimeout(pollImprovementStatus, 3000);
-                    } else {
-                        addMessage(`Improvement cycle ${status}! Applied ${data.current_cycle.applied_improvements?.length || 0} improvements.`, 'ai');
-                    }
+                itemDiv.innerHTML = `
+                    <div class="knowledge-title">${item.title}</div>
+                    <div class="knowledge-snippet">${item.snippet}</div>
+                    <div class="knowledge-meta">
+                        Source: ${item.source} • Last updated: ${item.updated}
+                    </div>
+                `;
+                
+                resultsDiv.appendChild(itemDiv);
+            });
+        }
+        
+        // Privacy & Security Functions
+        function togglePermission(element, permission) {
+            element.classList.toggle('active');
+            const isEnabled = element.classList.contains('active');
+            
+            // Send permission update to backend
+            updatePermission(permission, isEnabled);
+        }
+        
+        async function updatePermission(permission, enabled) {
+            try {
+                const response = await fetch('/personal-assistant/privacy/permissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        permission: permission, 
+                        enabled: enabled 
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to update permission');
                 }
             } catch (error) {
-                console.error('Error polling status:', error);
+                console.error('Error updating permission:', error);
+            }
+        }
+        
+        async function exportData() {
+            try {
+                const response = await fetch('/personal-assistant/privacy/export', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'personal_assistant_data.json';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                console.error('Error exporting data:', error);
+            }
+        }
+        
+        function deleteAllData() {
+            if (confirm('Are you sure you want to delete all your data? This action cannot be undone.')) {
+                performDataDeletion();
+            }
+        }
+        
+        async function performDataDeletion() {
+            try {
+                const response = await fetch('/personal-assistant/privacy/delete-all', {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('All data has been deleted successfully.');
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error deleting data:', error);
             }
         }
         
@@ -403,13 +1279,25 @@
         
         function updateStatus(message, type) {
             const status = document.getElementById('status');
-            status.textContent = message;
+            const indicator = type === 'error' ? 
+                '<span class="status-indicator status-offline"></span>' : 
+                '<span class="status-indicator status-online"></span>';
+            status.innerHTML = indicator + message;
             status.className = type === 'error' ? 'status error' : 'status';
         }
         
-        // Focus input on load
+        // Initialize the application
         window.onload = function() {
             document.getElementById('messageInput').focus();
+            
+            // Load initial data for the current tab
+            if (currentTab === 'files') {
+                loadFileList();
+            } else if (currentTab === 'tasks') {
+                loadTasks();
+            } else if (currentTab === 'knowledge') {
+                loadKnowledgeBase();
+            }
         };
     </script>
 </body>

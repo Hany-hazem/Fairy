@@ -115,7 +115,7 @@
 
 ## API and Interface Updates
 
-- [-] 12. Update FastAPI Endpoints
+- [x] 12. Update FastAPI Endpoints
   - Add new API endpoints for file system operations
   - Create endpoints for screen monitoring control and context retrieval
   - Add task management and knowledge base query endpoints
@@ -124,7 +124,7 @@
   - Commit changes to git: `git add . && git commit -m "Add FastAPI endpoints for personal assistant features" && git push`
   - _Requirements: 1.1, 3.1, 8.1, 9.1, 5.1_
 
-- [ ] 13. Enhance Web Interface
+- [-] 13. Enhance Web Interface
   - Update existing web interface to support new personal assistant features
   - Add file browser and management interface components
   - Create privacy dashboard and permission control interface
