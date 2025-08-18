@@ -518,3 +518,33 @@ obsidian-notes/
 - **Security**: All data access must be permission-controlled
 
 This comprehensive overview should give any new team member everything they need to understand the project architecture, contribute effectively, and maintain the high standards we've established. The modular design and extensive documentation make it easy to onboard and start contributing quickly.
+
+## Related Documentation & Deep Dives
+
+### Architecture & Technical Details
+- [[architecture-deep-dive]] - Comprehensive architectural analysis and design decisions
+- [[technical-concepts]] - Core implementation patterns and concepts
+- [[../architecture-overview]] - System architecture overview with diagrams
+- [[../component-maps/personal-assistant-core]] - Core orchestrator detailed documentation
+- [[../component-maps/multi-modal-interaction]] - Multi-modal system implementation
+
+### Development & Implementation
+- [[development-guide]] - Practical development workflow and step-by-step examples
+- [[../task-progress]] - Current implementation status and next milestones
+- [[../requirements-map]] - Requirements tracking and completion status
+- [[../daily-logs/2025-08-17]] - Latest implementation achievements and decisions
+
+### Educational & Learning Resources
+- [[../educational-assessment]] - Assessment as university study material
+- [[README]] - Complete onboarding guide and learning paths
+- [[../README#Learning Paths]] - Structured learning progression
+- [[../component-maps/README]] - Technical component documentation index
+
+### Project Management & Progress
+- [[../project-overview]] - High-level project status and current achievements
+- [[../daily-logs/README]] - Historical progress tracking and development decisions
+
+### Quick Navigation
+- [[../README]] - Main knowledge base hub
+- [[README#Phase 1]] - Start here for structured onboarding
+- [[development-guide#Quick Start Guide]] - Environment setup and first steps

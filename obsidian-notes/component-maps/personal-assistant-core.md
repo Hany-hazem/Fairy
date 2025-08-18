@@ -274,18 +274,45 @@ class CapabilityConfig:
 - Resource usage optimization
 - Response time reduction
 
-## Related Components
-- [[file-system-manager]] - File operations capability
-- [[screen-monitor]] - Screen monitoring capability
-- [[task-manager]] - Task management capability
-- [[personal-knowledge-base]] - Knowledge retrieval capability
-- [[learning-engine]] - Personalization engine
-- [[multi-modal-interaction]] - Multi-modal interface (Task 7)
+## Related Components & Documentation
 
-## Dependencies
+### Core System Components
+- [[multi-modal-interaction]] - Multi-modal interface system (✅ Complete)
+- **File System Manager** - File operations capability (✅ Complete)
+- **Screen Monitor** - Screen monitoring capability (✅ Complete)
+- **Task Manager** - Task management capability (✅ Complete)
+- **Personal Knowledge Base** - Knowledge retrieval capability (✅ Complete)
+- **Learning Engine** - Personalization engine (✅ Complete)
+
+### Architecture & Design
+- [[../architecture-overview]] - System architecture overview
+- [[../team-onboarding/architecture-deep-dive]] - Detailed architectural analysis
+- [[../team-onboarding/technical-concepts]] - Core implementation patterns
+
+### Implementation Progress
+- [[../task-progress]] - Current implementation status and next steps
+- [[../requirements-map]] - Requirements tracking and completion
+- [[../daily-logs/2025-08-17]] - Latest implementation achievements
+
+### Team Resources
+- [[../team-onboarding/README]] - Complete onboarding guide
+- [[../team-onboarding/development-guide]] - Development workflow and practices
+- [[../team-onboarding/project-overview-complete]] - Comprehensive project overview
+
+### Educational Resources
+- [[../educational-assessment]] - Assessment as university study material
+- [[../team-onboarding/technical-concepts#Request-Response Pattern]] - Core request handling
+- [[../team-onboarding/technical-concepts#Capability Module Pattern]] - Module architecture
+
+### Navigation
+- [[../README]] - Main knowledge base hub
+- [[../project-overview]] - High-level project status
+
+## Technical Dependencies
 - **FastAPI**: Web framework and API
 - **Pydantic**: Data validation and settings
 - **Redis**: Caching and session storage
 - **SQLite**: Local data persistence
-- **Speech Recognition**: Voice processing (Task 7)
-- **Accessibility Libraries**: Screen reader support (Task 7)
+- **Speech Recognition**: Voice processing (Multi-modal support)
+- **Accessibility Libraries**: Screen reader support (Multi-modal support)
+- **Tkinter/PyQt**: Screen overlay system (Multi-modal support)

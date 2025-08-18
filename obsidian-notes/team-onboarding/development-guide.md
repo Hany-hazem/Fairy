@@ -574,3 +574,36 @@ async with DatabaseConnection() as conn:
 - [ ] Contribute to architectural decisions
 
 Remember: Don't hesitate to ask questions! The codebase is complex, and it's normal to need clarification. Use the team communication channels and refer back to this documentation as needed.
+
+## Related Documentation & Resources
+
+### Architecture & Patterns
+- [[technical-concepts]] - Core patterns and implementation concepts used in examples
+- [[architecture-deep-dive]] - Detailed architectural analysis and design decisions
+- [[../architecture-overview]] - System architecture overview and component relationships
+
+### Project Context
+- [[project-overview-complete]] - Complete project overview and system understanding
+- [[../project-overview]] - Current project status and achievements
+- [[../task-progress]] - Implementation progress and upcoming milestones
+- [[../requirements-map]] - Requirements tracking and feature completion
+
+### Component Implementation
+- [[../component-maps/personal-assistant-core]] - Core system implementation details
+- [[../component-maps/multi-modal-interaction]] - Multi-modal system example
+- [[../component-maps/README]] - All component documentation and examples
+
+### Educational Resources
+- [[../educational-assessment]] - Educational value for software engineering learning
+- [[README]] - Complete onboarding guide and learning paths
+- [[../daily-logs/2025-08-17]] - Real development process and decision-making
+
+### Testing & Quality
+- `tests/test_multi_modal_simple.py` - Comprehensive testing examples
+- [[technical-concepts#Testing Patterns]] - Testing pattern implementations
+- [[architecture-deep-dive#Performance Architecture]] - Performance considerations
+
+### Navigation
+- [[../README]] - Main knowledge base hub
+- [[README#Phase 2]] - Technical deep dive phase
+- [[README#Phase 3]] - Hands-on development phase

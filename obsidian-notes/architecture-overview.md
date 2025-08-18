@@ -245,8 +245,34 @@ graph LR
 - **CQRS**: Separate read/write models for optimization
 
 ## Related Documentation
-- [[component-maps/personal-assistant-core]] - Core component details
-- [[component-maps/file-system-manager]] - File management architecture
-- [[component-maps/screen-monitor]] - Screen monitoring design
-- [[security-privacy-design]] - Security and privacy details
-- [[performance-optimization]] - Performance tuning guide
+
+### Core Project Information
+- [[project-overview]] - High-level project status and vision
+- [[requirements-map]] - Requirements tracking and completion status
+- [[task-progress]] - Implementation progress and current milestones
+- [[educational-assessment]] - Educational value and university applications
+
+### Detailed Architecture Analysis
+- [[team-onboarding/architecture-deep-dive]] - Comprehensive architectural analysis
+- [[team-onboarding/technical-concepts]] - Core patterns and implementation concepts
+- [[team-onboarding/project-overview-complete]] - Complete system overview
+
+### Component Documentation
+- [[component-maps/personal-assistant-core]] - Core orchestrator architecture
+- [[component-maps/multi-modal-interaction]] - Multi-modal interaction system
+
+### Implementation Guides
+- [[team-onboarding/development-guide]] - Development workflow and practices
+- [[team-onboarding/README]] - Complete onboarding and learning paths
+- [[daily-logs/2025-08-17]] - Latest implementation details and decisions
+
+### Specialized Topics
+- [[team-onboarding/technical-concepts#Security & Privacy Patterns]] - Security architecture
+- [[team-onboarding/technical-concepts#Performance Patterns]] - Performance optimization
+- [[team-onboarding/architecture-deep-dive#Privacy & Security Architecture]] - Privacy-first design
+- [[team-onboarding/architecture-deep-dive#Performance Architecture]] - Scalability patterns
+
+### Navigation
+- [[README]] - Main knowledge base navigation
+- [[README#Technical Documentation]] - Technical documentation index
+- [[team-onboarding/README#System Architecture Overview]] - Architecture diagram

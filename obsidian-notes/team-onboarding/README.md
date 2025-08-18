@@ -240,3 +240,36 @@ Welcome to the team! We're excited to have you contribute to building the future
 ---
 
 *This documentation is living and evolving. If you find gaps or have suggestions for improvement, please contribute back to help future team members!*
+
+## Related Documentation & Cross-References
+
+### Core Project Information
+- [[../project-overview]] - High-level project status and vision
+- [[../requirements-map]] - Requirements tracking and completion status
+- [[../task-progress]] - Implementation progress and current milestones
+- [[../architecture-overview]] - System architecture overview
+
+### Educational Resources
+- [[../educational-assessment]] - Assessment as university study material
+- [[../educational-assessment#University Course Applications]] - Specific course applications
+- [[../educational-assessment#Learning Theory Application]] - Pedagogical approach
+
+### Component Documentation
+- [[../component-maps/personal-assistant-core]] - Core orchestrator implementation
+- [[../component-maps/multi-modal-interaction]] - Multi-modal interaction system
+- [[../component-maps/README]] - Complete component documentation index
+
+### Progress Tracking
+- [[../daily-logs/2025-08-17]] - Latest development achievements
+- [[../daily-logs/README]] - Historical progress and decision tracking
+
+### Detailed Learning Materials
+- [[project-overview-complete]] - Everything you need to know about the project
+- [[development-guide]] - Practical development workflow and examples
+- [[technical-concepts]] - Core patterns and implementation concepts
+- [[architecture-deep-dive]] - Detailed system architecture analysis
+
+### Navigation
+- [[../README]] - Main knowledge base hub
+- [[../README#For New Team Members]] - Quick navigation for onboarding
+- [[../README#Learning Paths]] - Structured learning progression

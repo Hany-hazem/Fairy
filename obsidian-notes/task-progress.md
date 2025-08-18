@@ -167,7 +167,31 @@
 - **Medium Risk**: Multi-modal interaction complexity
 - **High Risk**: External tool integrations and privacy compliance
 
-## Related Notes
-- [[project-overview]] - Overall project status
-- [[requirements-map]] - Detailed requirements tracking
-- [[component-maps/]] - Individual component documentation
+## Related Documentation
+
+### Project Status & Planning
+- [[project-overview]] - High-level project status and vision
+- [[requirements-map]] - Detailed requirements tracking and completion
+- [[educational-assessment]] - Assessment as university study material
+
+### Architecture & Implementation
+- [[architecture-overview]] - System architecture and component relationships
+- [[team-onboarding/architecture-deep-dive]] - Detailed architectural analysis
+- [[team-onboarding/technical-concepts]] - Implementation patterns and concepts
+
+### Component Documentation
+- [[component-maps/personal-assistant-core]] - Core orchestrator implementation
+- [[component-maps/multi-modal-interaction]] - Multi-modal interaction system
+
+### Team Resources
+- [[team-onboarding/README]] - Complete team onboarding guide
+- [[team-onboarding/project-overview-complete]] - Comprehensive project overview
+- [[team-onboarding/development-guide]] - Development workflow and practices
+
+### Progress Tracking
+- [[daily-logs/2025-08-17]] - Latest development achievements and decisions
+- [[requirements-map#Progress Summary]] - Overall completion metrics
+
+### Navigation
+- [[README]] - Main knowledge base navigation hub
+- [[README#Learning Paths]] - Structured learning progression

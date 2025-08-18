@@ -373,15 +373,46 @@ class InteractionContext:
 - **Display**: For visual overlays
 - **Keyboard**: For text completion
 
-## Related Components
-- [[personal-assistant-core]] - Core integration point
-- [[screen-monitor]] - Screen context for overlays
-- [[learning-engine]] - Pattern learning for text completion
-- [[task-manager]] - Task context for suggestions
+## Related Components & Documentation
+
+### Core Integration
+- [[personal-assistant-core]] - Core integration point and orchestrator
+- **Screen Monitor** - Screen context for overlays (✅ Complete)
+- **Learning Engine** - Pattern learning for text completion (✅ Complete)
+- **Task Manager** - Task context for suggestions (✅ Complete)
+
+### Architecture & Design
+- [[../architecture-overview]] - System architecture and multi-modal integration
+- [[../team-onboarding/architecture-deep-dive]] - Detailed architectural analysis
+- [[../team-onboarding/technical-concepts]] - Multi-modal implementation patterns
+
+### Implementation Details
+- [[../task-progress#Task 7]] - Multi-modal implementation progress
+- [[../requirements-map#Requirement 6]] - Multi-modal interaction requirements
+- [[../daily-logs/2025-08-17]] - Implementation achievements and decisions
+
+### Team Resources
+- [[../team-onboarding/README]] - Complete onboarding with multi-modal concepts
+- [[../team-onboarding/development-guide]] - Development practices for multi-modal features
+- [[../team-onboarding/project-overview-complete]] - Multi-modal system overview
+
+### Educational Resources
+- [[../educational-assessment]] - Educational value for HCI and accessibility courses
+- [[../team-onboarding/technical-concepts#Multi-Modal Coordination Pattern]] - Implementation patterns
+- [[../team-onboarding/architecture-deep-dive#Multi-Modal Architecture Deep Dive]] - Detailed analysis
+
+### Accessibility & Standards
+- [[../team-onboarding/technical-concepts#Accessibility-First Design]] - Accessibility patterns
+- [[../team-onboarding/architecture-deep-dive#Privacy & Security Architecture]] - Privacy considerations
+- [[../requirements-map#Requirement 6]] - WCAG compliance requirements
+
+### Navigation
+- [[../README]] - Main knowledge base hub
+- [[../project-overview]] - High-level project status with multi-modal achievements
 
 ## Future Enhancements
-- **Gesture Recognition**: Hand gesture support
-- **Eye Tracking**: Gaze-based interaction
-- **Brain-Computer Interface**: Advanced accessibility
-- **Augmented Reality**: AR overlay support
-- **Multi-Language**: International language support
+- **Gesture Recognition**: Hand gesture support → [[../task-progress#Future Tasks]]
+- **Eye Tracking**: Gaze-based interaction → [[../team-onboarding/project-overview-complete#Future Enhancements]]
+- **Brain-Computer Interface**: Advanced accessibility → [[../educational-assessment#Accessibility & Ethics]]
+- **Augmented Reality**: AR overlay support → [[../architecture-overview#Integration Patterns]]
+- **Multi-Language**: International language support → [[../requirements-map#Future Requirements]]

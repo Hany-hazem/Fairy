@@ -245,3 +245,38 @@ These Obsidian notes represent **outstanding educational material** that exceeds
 The material demonstrates that **real-world project documentation** can serve as exceptional educational content when properly structured and maintained. This approach bridges the gap between academic learning and professional practice more effectively than traditional textbooks.
 
 **University students using this material will graduate with industry-ready skills and a deep understanding of modern software development practices.**
+
+## Related Documentation & Learning Resources
+
+### Core Educational Materials
+- [[team-onboarding/README]] - Complete structured learning path for students
+- [[team-onboarding/project-overview-complete]] - Comprehensive project overview
+- [[team-onboarding/development-guide]] - Practical development workflow
+- [[team-onboarding/technical-concepts]] - Core patterns and implementation concepts
+- [[team-onboarding/architecture-deep-dive]] - Detailed system architecture analysis
+
+### Project Documentation
+- [[project-overview]] - High-level project status and achievements
+- [[requirements-map]] - Requirements tracking and educational applications
+- [[task-progress]] - Implementation progress and learning milestones
+- [[architecture-overview]] - System architecture and design patterns
+
+### Technical Implementation
+- [[component-maps/personal-assistant-core]] - Core system implementation example
+- [[component-maps/multi-modal-interaction]] - Multi-modal system case study
+- [[component-maps/README]] - Complete component documentation index
+
+### Progress & Development
+- [[daily-logs/2025-08-17]] - Real development progress and decision-making
+- [[daily-logs/README]] - Historical development tracking and learning
+
+### Course Applications
+- [[team-onboarding/technical-concepts#AI/ML Integration Patterns]] - Machine Learning courses
+- [[team-onboarding/architecture-deep-dive#Privacy & Security Architecture]] - Security courses
+- [[component-maps/multi-modal-interaction]] - Human-Computer Interaction courses
+- [[team-onboarding/technical-concepts#Performance Patterns]] - Systems courses
+- [[team-onboarding/development-guide]] - Software Engineering courses
+
+### Navigation
+- [[README]] - Main knowledge base hub with learning paths
+- [[README#Learning Paths]] - Structured educational progression

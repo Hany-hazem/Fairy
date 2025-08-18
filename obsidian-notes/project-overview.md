@@ -86,7 +86,30 @@ graph TB
 ```
 
 ## Related Notes
-- [[requirements-map]] - Detailed requirements tracking
-- [[task-progress]] - Current task status and progress
-- [[architecture-overview]] - Technical architecture details
-- [[component-maps/personal-assistant-core]] - Core component details
+
+### Core Documentation
+- [[requirements-map]] - Detailed requirements tracking and completion status
+- [[task-progress]] - Current task status and implementation progress
+- [[architecture-overview]] - Technical architecture and system design
+- [[educational-assessment]] - Assessment of notes as university study material
+
+### Component Documentation
+- [[component-maps/personal-assistant-core]] - Core orchestrator component details
+- [[component-maps/multi-modal-interaction]] - Multi-modal interaction system
+- [[component-maps/README]] - All component documentation index
+
+### Team Resources
+- [[team-onboarding/README]] - Complete team onboarding guide
+- [[team-onboarding/project-overview-complete]] - Comprehensive project overview
+- [[team-onboarding/development-guide]] - Development workflow and practices
+- [[team-onboarding/technical-concepts]] - Core patterns and implementation concepts
+- [[team-onboarding/architecture-deep-dive]] - Detailed system architecture analysis
+
+### Progress Tracking
+- [[daily-logs/2025-08-17]] - Latest development progress and achievements
+- [[daily-logs/README]] - Historical progress tracking and decisions
+
+### Quick Navigation
+- [[README]] - Main knowledge base navigation hub
+- [[task-progress#Next Steps]] - Upcoming development milestones
+- [[requirements-map#Progress Summary]] - Overall completion metrics

@@ -540,3 +540,32 @@ class DatabasePool:
 ```
 
 These patterns form the foundation of our system architecture. Understanding them will help you navigate the codebase, contribute effectively, and maintain consistency with the existing design principles.
+
+## Related Documentation & Implementation Examples
+
+### Architecture & Design
+- [[architecture-deep-dive]] - Detailed architectural analysis applying these patterns
+- [[../architecture-overview]] - System architecture overview showing pattern usage
+- [[../component-maps/personal-assistant-core]] - Core patterns in practice
+- [[../component-maps/multi-modal-interaction]] - Multi-modal coordination patterns
+
+### Practical Implementation
+- [[development-guide]] - Step-by-step examples using these patterns
+- [[project-overview-complete]] - Complete system overview with pattern applications
+- [[../task-progress]] - Implementation progress showing pattern evolution
+- [[../daily-logs/2025-08-17]] - Real-world pattern application decisions
+
+### Educational Resources
+- [[../educational-assessment]] - Educational value of these patterns for students
+- [[../educational-assessment#Technical Concepts]] - Pattern learning applications
+- [[README]] - Learning paths incorporating these patterns
+
+### Code Examples & Testing
+- [[development-guide#Adding a New Feature]] - Complete pattern implementation example
+- [[../component-maps/README]] - Component documentation showing patterns
+- `tests/test_multi_modal_simple.py` - Pattern testing examples
+
+### Navigation
+- [[../README]] - Main knowledge base hub
+- [[README#Phase 2]] - Technical deep dive learning path
+- [[development-guide#Development Workflow]] - Practical pattern application

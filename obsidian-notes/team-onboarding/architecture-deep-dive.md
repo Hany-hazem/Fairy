@@ -686,3 +686,38 @@ class ResourceManager:
 ```
 
 This deep dive into the architecture should give you a comprehensive understanding of how all the pieces fit together. The system is designed to be modular, secure, performant, and accessible while maintaining a clean separation of concerns and clear data flow patterns.
+
+## Related Documentation & Implementation Details
+
+### Core Architecture Resources
+- [[../architecture-overview]] - High-level system architecture overview
+- [[technical-concepts]] - Core patterns and implementation concepts
+- [[project-overview-complete]] - Complete system overview and context
+
+### Implementation Examples
+- [[../component-maps/personal-assistant-core]] - Core orchestrator implementation
+- [[../component-maps/multi-modal-interaction]] - Multi-modal architecture in practice
+- [[development-guide]] - Practical implementation examples and workflow
+
+### Project Context & Progress
+- [[../project-overview]] - Current project status and achievements
+- [[../task-progress]] - Implementation progress and architectural evolution
+- [[../requirements-map]] - Requirements driving architectural decisions
+- [[../daily-logs/2025-08-17]] - Real architectural decisions and implementation
+
+### Educational Applications
+- [[../educational-assessment]] - Educational value for architecture and systems courses
+- [[../educational-assessment#Software Engineering]] - Software engineering applications
+- [[../educational-assessment#Security & Privacy]] - Security architecture learning
+- [[README]] - Complete learning paths incorporating architecture
+
+### Specialized Topics
+- [[technical-concepts#Security & Privacy Patterns]] - Security pattern implementations
+- [[technical-concepts#Performance Patterns]] - Performance optimization patterns
+- [[technical-concepts#AI/ML Integration Patterns]] - AI/ML architecture patterns
+- [[development-guide#Performance Monitoring]] - Performance implementation practices
+
+### Navigation
+- [[../README]] - Main knowledge base hub
+- [[README#Phase 2]] - Technical deep dive learning path
+- [[../component-maps/README]] - Component-specific architectural details
