@@ -29,6 +29,7 @@ from .voice_processor import VoiceProcessor, VoiceCommand, VoiceResponse, VoiceS
 from .screen_overlay import ScreenOverlay, OverlayConfig, OverlayType, OverlayPosition
 from .text_completion import TextCompletion, TextContext, Completion, CompletionSettings
 from .accessibility_manager import AccessibilityManager, AccessibilitySettings
+from .integration_hub import IntegrationHub
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class RequestType(Enum):
     VISUAL_FEEDBACK = "visual_feedback"
     MODE_SWITCH = "mode_switch"
     ACCESSIBILITY_REQUEST = "accessibility_request"
+    INTEGRATION_REQUEST = "integration_request"
 
 
 @dataclass
@@ -111,6 +113,9 @@ class PersonalAssistantCore:
         self._capability_modules = {}
         self._initialize_capability_modules()
         
+        # Initialize Integration Hub
+        self.integration_hub = IntegrationHub(self.privacy_manager)
+        
         logger.info("Personal Assistant Core initialized with all capability modules")
     
     def _initialize_capability_modules(self):
@@ -143,6 +148,10 @@ class PersonalAssistantCore:
                 accessibility_settings=AccessibilitySettings()
             )
             logger.info("InteractionModeManager initialized")
+            
+            # Initialize Integration Hub
+            asyncio.create_task(self.integration_hub.initialize())
+            logger.info("IntegrationHub initialized")
             
             # Screen Monitor and Knowledge Base will be initialized per-user
             # as they require user-specific configuration
@@ -366,6 +375,7 @@ class PersonalAssistantCore:
             RequestType.TASK_MANAGEMENT: PermissionType.PERSONAL_DATA,
             RequestType.KNOWLEDGE_SEARCH: PermissionType.PERSONAL_DATA,
             RequestType.LEARNING_FEEDBACK: PermissionType.LEARNING,
+            RequestType.INTEGRATION_REQUEST: PermissionType.AUTOMATION,
         }
         return permission_map.get(request_type)
     
@@ -401,6 +411,8 @@ class PersonalAssistantCore:
             return await self._handle_mode_switch(request, context)
         elif request.request_type == RequestType.ACCESSIBILITY_REQUEST:
             return await self._handle_accessibility_request(request, context)
+        elif request.request_type == RequestType.INTEGRATION_REQUEST:
+            return await self._handle_integration_request(request, context)
         else:
             return AssistantResponse(
                 content="I don't understand that type of request.",
@@ -1375,6 +1387,112 @@ class PersonalAssistantCore:
                 suggestions=["Try the accessibility request again."]
             )
     
+    async def _handle_integration_request(self, request: AssistantRequest, context: UserContext) -> AssistantResponse:
+        """Handle external tool integration requests"""
+        try:
+            action = request.metadata.get('action', 'list_integrations')
+            
+            if action == 'list_integrations':
+                integrations = await self.integration_hub.list_integrations()
+                return AssistantResponse(
+                    content=f"Available integrations: {', '.join(integrations.keys())}",
+                    success=True,
+                    metadata={"integrations": integrations},
+                    suggestions=["You can connect to cloud services, development tools, and productivity apps."]
+                )
+            
+            elif action == 'test_connections':
+                results = await self.integration_hub.test_all_connections()
+                working_count = sum(1 for result in results.values() if result)
+                total_count = len(results)
+                
+                return AssistantResponse(
+                    content=f"Connection test complete: {working_count}/{total_count} integrations working",
+                    success=True,
+                    metadata={"connection_results": results},
+                    suggestions=["Check individual integration settings if any connections failed."]
+                )
+            
+            elif action == 'sync_cloud_files':
+                service = request.metadata.get('service')
+                files = await self.integration_hub.sync_files_from_cloud(request.user_id, service)
+                
+                return AssistantResponse(
+                    content=f"Found {len(files)} files from cloud services",
+                    success=True,
+                    metadata={"cloud_files": files},
+                    suggestions=["I can help you organize or analyze these files."]
+                )
+            
+            elif action == 'get_dev_context':
+                context_data = await self.integration_hub.get_development_context(request.user_id)
+                
+                repo_count = len(context_data.get('repositories', []))
+                issue_count = sum(len(issues) for issues in context_data.get('issues', {}).values())
+                
+                return AssistantResponse(
+                    content=f"Development context: {repo_count} repositories, {issue_count} open issues",
+                    success=True,
+                    metadata={"dev_context": context_data},
+                    suggestions=["I can help you prioritize issues or analyze repository activity."]
+                )
+            
+            elif action == 'send_notification':
+                message = request.metadata.get('message', request.content)
+                channel = request.metadata.get('channel')
+                
+                success = await self.integration_hub.send_notification(request.user_id, message, channel)
+                
+                if success:
+                    return AssistantResponse(
+                        content="Notification sent successfully",
+                        success=True,
+                        metadata={"notification_sent": True},
+                        suggestions=[]
+                    )
+                else:
+                    return AssistantResponse(
+                        content="Failed to send notification - check your communication tool connections",
+                        success=False,
+                        metadata={"notification_sent": False},
+                        suggestions=["Verify your Slack or other communication tool integration is working."]
+                    )
+            
+            elif action == 'connect_service':
+                service_name = request.metadata.get('service')
+                if not service_name:
+                    return AssistantResponse(
+                        content="Service name is required to connect",
+                        success=False,
+                        metadata={},
+                        suggestions=["Specify which service to connect: google_drive, onedrive, github, slack"]
+                    )
+                
+                # This would typically involve OAuth flow in a real implementation
+                return AssistantResponse(
+                    content=f"To connect {service_name}, you'll need to provide authentication credentials",
+                    success=True,
+                    metadata={"service": service_name, "auth_required": True},
+                    suggestions=[f"Visit the {service_name} settings to configure API access"]
+                )
+            
+            else:
+                return AssistantResponse(
+                    content=f"Unknown integration action: {action}",
+                    success=False,
+                    metadata={},
+                    suggestions=["Available actions: list_integrations, test_connections, sync_cloud_files, get_dev_context, send_notification, connect_service"]
+                )
+                
+        except Exception as e:
+            logger.error(f"Error handling integration request: {e}")
+            return AssistantResponse(
+                content=f"Integration request error: {str(e)}",
+                success=False,
+                metadata={"error": str(e)},
+                suggestions=["Try the integration request again or check your connection settings."]
+            )
+    
     def _map_request_to_interaction_type(self, request_type: RequestType) -> InteractionType:
         """Map request type to interaction type"""
         mapping = {
@@ -1393,6 +1511,7 @@ class PersonalAssistantCore:
             RequestType.VISUAL_FEEDBACK: InteractionType.COMMAND,
             RequestType.MODE_SWITCH: InteractionType.COMMAND,
             RequestType.ACCESSIBILITY_REQUEST: InteractionType.COMMAND,
+            RequestType.INTEGRATION_REQUEST: InteractionType.COMMAND,
         }
         return mapping.get(request_type, InteractionType.QUERY)
     

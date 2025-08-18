@@ -1466,6 +1466,211 @@ async def system_status():
     }
 
 # ============================================================================
+# INTEGRATION HUB ENDPOINTS
+# ============================================================================
+
+class IntegrationRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    action: str = Field(..., description="Integration action")
+    service: Optional[str] = Field(None, description="Specific service name")
+    message: Optional[str] = Field(None, description="Message for notifications")
+    channel: Optional[str] = Field(None, description="Channel for notifications")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+@app.post("/integrations/action", tags=["Integration Hub"])
+async def handle_integration_action(request: IntegrationRequest):
+    """
+    Handle integration actions like listing services, syncing files, etc.
+    """
+    try:
+        from .personal_assistant_core import PersonalAssistantCore, AssistantRequest, RequestType
+        
+        # Initialize personal assistant core
+        assistant_core = PersonalAssistantCore()
+        
+        # Create assistant request
+        assistant_request = AssistantRequest(
+            user_id=request.user_id,
+            request_type=RequestType.INTEGRATION_REQUEST,
+            content=request.message or f"Integration action: {request.action}",
+            metadata={
+                "action": request.action,
+                "service": request.service,
+                "message": request.message,
+                "channel": request.channel,
+                **request.metadata
+            }
+        )
+        
+        # Process the request
+        response = await assistant_core.process_request(assistant_request)
+        
+        return {
+            "success": response.success,
+            "content": response.content,
+            "metadata": response.metadata,
+            "suggestions": response.suggestions,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/integrations/list", tags=["Integration Hub"])
+async def list_integrations():
+    """
+    List all available integrations and their status
+    """
+    try:
+        from .integration_hub import IntegrationHub
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        integration_hub = IntegrationHub(privacy_manager)
+        await integration_hub.initialize()
+        
+        integrations = await integration_hub.list_integrations()
+        
+        return {
+            "integrations": integrations,
+            "total_count": len(integrations),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/integrations/test", tags=["Integration Hub"])
+async def test_integration_connections():
+    """
+    Test connections for all configured integrations
+    """
+    try:
+        from .integration_hub import IntegrationHub
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        integration_hub = IntegrationHub(privacy_manager)
+        await integration_hub.initialize()
+        
+        results = await integration_hub.test_all_connections()
+        
+        working_count = sum(1 for result in results.values() if result)
+        total_count = len(results)
+        
+        return {
+            "connection_results": results,
+            "working_count": working_count,
+            "total_count": total_count,
+            "overall_status": "healthy" if working_count == total_count else "degraded",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class CloudSyncRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    service: Optional[str] = Field(None, description="Specific cloud service to sync")
+
+@app.post("/integrations/sync-cloud", tags=["Integration Hub"])
+async def sync_cloud_files(request: CloudSyncRequest):
+    """
+    Sync files from cloud storage services
+    """
+    try:
+        from .integration_hub import IntegrationHub
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        integration_hub = IntegrationHub(privacy_manager)
+        await integration_hub.initialize()
+        
+        files = await integration_hub.sync_files_from_cloud(request.user_id, request.service)
+        
+        return {
+            "files": files,
+            "file_count": len(files),
+            "service": request.service or "all",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class DevContextRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+
+@app.post("/integrations/dev-context", tags=["Integration Hub"])
+async def get_development_context(request: DevContextRequest):
+    """
+    Get development context from integrated development tools
+    """
+    try:
+        from .integration_hub import IntegrationHub
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        integration_hub = IntegrationHub(privacy_manager)
+        await integration_hub.initialize()
+        
+        context = await integration_hub.get_development_context(request.user_id)
+        
+        repo_count = len(context.get('repositories', []))
+        issue_count = sum(len(issues) for issues in context.get('issues', {}).values())
+        
+        return {
+            "context": context,
+            "summary": {
+                "repository_count": repo_count,
+                "issue_count": issue_count
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class NotificationRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    message: str = Field(..., description="Message to send")
+    channel: Optional[str] = Field(None, description="Channel to send to")
+
+@app.post("/integrations/notify", tags=["Integration Hub"])
+async def send_notification(request: NotificationRequest):
+    """
+    Send notification through integrated communication tools
+    """
+    try:
+        from .integration_hub import IntegrationHub
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        # Initialize components
+        privacy_manager = PrivacySecurityManager()
+        integration_hub = IntegrationHub(privacy_manager)
+        await integration_hub.initialize()
+        
+        success = await integration_hub.send_notification(
+            request.user_id, 
+            request.message, 
+            request.channel
+        )
+        
+        return {
+            "success": success,
+            "message": request.message,
+            "channel": request.channel,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
 # SAFETY AND CONTENT MODERATION ENDPOINTS
 # ============================================================================
 
