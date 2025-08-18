@@ -1697,6 +1697,401 @@ async def check_content_safety(request: SafetyCheckRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
+# PRIVACY AND SECURITY ENDPOINTS
+# ============================================================================
+
+class PermissionRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    permission_type: str = Field(..., description="Permission type")
+    scope: Optional[Dict[str, Any]] = Field(None, description="Permission scope")
+    expires_in_days: Optional[int] = Field(None, description="Expiration in days")
+
+class ConsentRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    data_category: str = Field(..., description="Data category")
+    purpose: str = Field(..., description="Purpose for data collection")
+    retention_days: Optional[int] = Field(None, description="Data retention period in days")
+
+class DataEncryptionRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    data_key: str = Field(..., description="Data key")
+    data: Dict[str, Any] = Field(..., description="Data to encrypt")
+    data_category: str = Field(..., description="Data category")
+    privacy_level: str = Field("confidential", description="Privacy level")
+
+class DataDeletionRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    data_categories: List[str] = Field(..., description="Data categories to delete")
+    reason: Optional[str] = Field(None, description="Reason for deletion")
+
+class PrivacySettingRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    setting_key: str = Field(..., description="Setting key")
+    setting_value: Any = Field(..., description="Setting value")
+    privacy_level: str = Field("internal", description="Privacy level")
+
+class RetentionPolicyRequest(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    data_category: str = Field(..., description="Data category")
+    retention_policy: str = Field(..., description="Retention policy")
+    custom_days: Optional[int] = Field(None, description="Custom retention days")
+    auto_delete: bool = Field(False, description="Enable auto-deletion")
+
+@app.post("/privacy/permissions/request", tags=["Privacy & Security"])
+async def request_permission(request: PermissionRequest):
+    """Request user permission for data access"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        from .personal_assistant_models import PermissionType
+        
+        privacy_manager = PrivacySecurityManager()
+        permission_type = PermissionType(request.permission_type)
+        
+        granted = await privacy_manager.request_permission(
+            request.user_id, permission_type, request.scope, request.expires_in_days
+        )
+        
+        return {
+            "granted": granted,
+            "permission_type": request.permission_type,
+            "user_id": request.user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/permissions/{user_id}/{permission_type}", tags=["Privacy & Security"])
+async def get_permission_status(
+    user_id: str = Path(..., description="User ID"),
+    permission_type: str = Path(..., description="Permission type")
+):
+    """Get permission status for a user"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        from .personal_assistant_models import PermissionType
+        
+        privacy_manager = PrivacySecurityManager()
+        permission_type_enum = PermissionType(permission_type)
+        
+        permission = await privacy_manager.get_permission(user_id, permission_type_enum)
+        
+        if not permission:
+            return {"granted": False, "exists": False}
+        
+        return {
+            "granted": permission.granted,
+            "revoked": permission.revoked,
+            "granted_at": permission.granted_at.isoformat() if permission.granted_at else None,
+            "expires_at": permission.expires_at.isoformat() if permission.expires_at else None,
+            "scope": permission.scope,
+            "exists": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/privacy/permissions/{user_id}/{permission_type}", tags=["Privacy & Security"])
+async def revoke_permission(
+    user_id: str = Path(..., description="User ID"),
+    permission_type: str = Path(..., description="Permission type")
+):
+    """Revoke a user permission"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        from .personal_assistant_models import PermissionType
+        
+        privacy_manager = PrivacySecurityManager()
+        permission_type_enum = PermissionType(permission_type)
+        
+        revoked = await privacy_manager.revoke_permission(user_id, permission_type_enum)
+        
+        return {
+            "revoked": revoked,
+            "permission_type": permission_type,
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/privacy/consent/request", tags=["Privacy & Security"])
+async def request_consent(request: ConsentRequest):
+    """Request user consent for data collection"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory
+        
+        privacy_manager = PrivacySecurityManager()
+        data_category = DataCategory(request.data_category)
+        
+        status = await privacy_manager.request_consent(
+            request.user_id, data_category, request.purpose, request.retention_days
+        )
+        
+        return {
+            "consent_status": status.value,
+            "data_category": request.data_category,
+            "user_id": request.user_id,
+            "purpose": request.purpose,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/consent/{user_id}/{data_category}", tags=["Privacy & Security"])
+async def get_consent_status(
+    user_id: str = Path(..., description="User ID"),
+    data_category: str = Path(..., description="Data category")
+):
+    """Get consent status for a data category"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory
+        
+        privacy_manager = PrivacySecurityManager()
+        data_category_enum = DataCategory(data_category)
+        
+        status = await privacy_manager.get_consent_status(user_id, data_category_enum)
+        
+        return {
+            "consent_status": status.value,
+            "data_category": data_category,
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/privacy/consent/{user_id}/{data_category}", tags=["Privacy & Security"])
+async def revoke_consent(
+    user_id: str = Path(..., description="User ID"),
+    data_category: str = Path(..., description="Data category")
+):
+    """Revoke user consent for a data category"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory
+        
+        privacy_manager = PrivacySecurityManager()
+        data_category_enum = DataCategory(data_category)
+        
+        revoked = await privacy_manager.revoke_consent(user_id, data_category_enum)
+        
+        return {
+            "revoked": revoked,
+            "data_category": data_category,
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/privacy/data/encrypt", tags=["Privacy & Security"])
+async def encrypt_personal_data(request: DataEncryptionRequest):
+    """Encrypt and store personal data"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory, PrivacyLevel
+        
+        privacy_manager = PrivacySecurityManager()
+        data_category = DataCategory(request.data_category)
+        privacy_level = PrivacyLevel(request.privacy_level)
+        
+        success = await privacy_manager.encrypt_personal_data(
+            request.user_id, request.data_key, request.data, 
+            data_category, privacy_level
+        )
+        
+        return {
+            "success": success,
+            "data_key": request.data_key,
+            "user_id": request.user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/data/decrypt/{user_id}/{data_key}", tags=["Privacy & Security"])
+async def decrypt_personal_data(
+    user_id: str = Path(..., description="User ID"),
+    data_key: str = Path(..., description="Data key"),
+    purpose: Optional[str] = QueryParam(None, description="Purpose for data access")
+):
+    """Decrypt and retrieve personal data"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        privacy_manager = PrivacySecurityManager()
+        
+        data = await privacy_manager.decrypt_personal_data(user_id, data_key, purpose)
+        
+        if data is None:
+            raise HTTPException(status_code=404, detail="Data not found or access denied")
+        
+        return {
+            "data": data,
+            "data_key": data_key,
+            "user_id": user_id,
+            "purpose": purpose,
+            "timestamp": datetime.now().isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/privacy/data/delete", tags=["Privacy & Security"])
+async def request_data_deletion(request: DataDeletionRequest):
+    """Request deletion of user data"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory
+        
+        privacy_manager = PrivacySecurityManager()
+        data_categories = [DataCategory(cat) for cat in request.data_categories]
+        
+        request_id = await privacy_manager.request_data_deletion(
+            request.user_id, data_categories, request.reason
+        )
+        
+        return {
+            "request_id": request_id,
+            "data_categories": request.data_categories,
+            "user_id": request.user_id,
+            "reason": request.reason,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/dashboard/{user_id}", tags=["Privacy & Security"])
+async def get_privacy_dashboard(user_id: str = Path(..., description="User ID")):
+    """Get comprehensive privacy dashboard data"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        privacy_manager = PrivacySecurityManager()
+        
+        dashboard_data = await privacy_manager.get_enhanced_privacy_dashboard_data(user_id)
+        
+        return dashboard_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/privacy/settings", tags=["Privacy & Security"])
+async def set_privacy_setting(request: PrivacySettingRequest):
+    """Set a privacy setting"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, PrivacyLevel
+        
+        privacy_manager = PrivacySecurityManager()
+        privacy_level = PrivacyLevel(request.privacy_level)
+        
+        success = await privacy_manager.set_privacy_setting(
+            request.user_id, request.setting_key, 
+            request.setting_value, privacy_level
+        )
+        
+        return {
+            "success": success,
+            "setting_key": request.setting_key,
+            "setting_value": request.setting_value,
+            "user_id": request.user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/settings/{user_id}", tags=["Privacy & Security"])
+async def get_privacy_settings(user_id: str = Path(..., description="User ID")):
+    """Get all privacy settings for a user"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        privacy_manager = PrivacySecurityManager()
+        
+        settings = await privacy_manager.get_all_privacy_settings(user_id)
+        
+        return {
+            "settings": settings,
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/privacy/retention-policy", tags=["Privacy & Security"])
+async def set_retention_policy(request: RetentionPolicyRequest):
+    """Set data retention policy"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory, DataRetentionPolicy
+        
+        privacy_manager = PrivacySecurityManager()
+        data_category = DataCategory(request.data_category)
+        retention_policy = DataRetentionPolicy(request.retention_policy)
+        
+        success = await privacy_manager.set_data_retention_policy(
+            request.user_id, data_category, retention_policy,
+            request.custom_days, request.auto_delete
+        )
+        
+        return {
+            "success": success,
+            "data_category": request.data_category,
+            "retention_policy": request.retention_policy,
+            "user_id": request.user_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/access-history/{user_id}", tags=["Privacy & Security"])
+async def get_data_access_history(
+    user_id: str = Path(..., description="User ID"),
+    data_category: Optional[str] = QueryParam(None, description="Filter by data category"),
+    days: int = QueryParam(30, ge=1, le=365, description="Number of days to retrieve")
+):
+    """Get data access history for transparency"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager, DataCategory
+        
+        privacy_manager = PrivacySecurityManager()
+        
+        data_category_enum = None
+        if data_category:
+            data_category_enum = DataCategory(data_category)
+        
+        history = await privacy_manager.get_data_access_history(
+            user_id, data_category_enum, days
+        )
+        
+        return {
+            "access_history": history,
+            "user_id": user_id,
+            "data_category": data_category,
+            "days": days,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/privacy/violations/{user_id}", tags=["Privacy & Security"])
+async def get_privacy_violations(
+    user_id: str = Path(..., description="User ID"),
+    resolved: Optional[bool] = QueryParam(None, description="Filter by resolution status")
+):
+    """Get privacy violations for a user"""
+    try:
+        from .privacy_security_manager import PrivacySecurityManager
+        
+        privacy_manager = PrivacySecurityManager()
+        
+        violations = await privacy_manager.get_privacy_violations(user_id, resolved)
+        
+        return {
+            "violations": violations,
+            "user_id": user_id,
+            "resolved": resolved,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
 # ROOT AND DOCUMENTATION
 # ============================================================================
 

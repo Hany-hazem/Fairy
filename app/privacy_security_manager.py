@@ -278,11 +278,11 @@ class PrivacySecurityManager:
             permission = UserPermission(
                 user_id=user_id,
                 permission_type=permission_type,
-                granted=row[0],
+                granted=bool(row[0]),
                 granted_at=datetime.fromisoformat(row[1]) if row[1] else None,
                 expires_at=datetime.fromisoformat(row[2]) if row[2] else None,
                 scope=json.loads(row[3]) if row[3] else {},
-                revoked=row[4],
+                revoked=bool(row[4]),
                 revoked_at=datetime.fromisoformat(row[5]) if row[5] else None
             )
             
